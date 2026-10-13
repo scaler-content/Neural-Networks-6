@@ -1,0 +1,1613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Neural Network 6 post read</title>
+<meta name="description" content="Weight initialization and optimizers in PyTorch: symmetry breaking, initialization scale, Xavier vs He, momentum, RMSprop, Adam and learning rate scheduling.">
+<style>
+:root{
+  --navy-950:#060F30;
+  --navy-900:#0A1A4A;
+  --navy-800:#11287A;
+  --royal-700:#1636A6;
+  --royal-600:#1F46C8;
+  --royal-500:#2F5BE0;
+  --royal-300:#9DB4F5;
+  --royal-200:#C5D3FA;
+  --royal-100:#E3EAFB;
+  --royal-50:#F3F6FD;
+  --gold-500:#FFC21A;
+  --gold-600:#E6A800;
+  --gold-700:#8A6400;
+  --gold-200:#FFE5A0;
+  --gold-100:#FFF4CC;
+  --ink:#0F1B3D;
+  --muted:#46527A;
+  --line:#D6DEF3;
+  --paper:#FFFFFF;
+  --bg:#F6F8FE;
+  --radius:16px;
+  --shadow:0 1px 2px rgba(10,26,74,.06),0 8px 24px rgba(10,26,74,.07);
+  --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
+  --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --ax:#46527A; --grid:#DCE4F7; --txt:#46527A;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:76px}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:17px;line-height:1.7;-webkit-font-smoothing:antialiased}
+a{color:var(--royal-600);text-underline-offset:3px}
+a:hover{color:var(--royal-700)}
+:focus-visible{outline:3px solid var(--royal-600);outline-offset:3px;border-radius:4px}
+.dark :focus-visible,.hero :focus-visible,footer :focus-visible{outline-color:var(--gold-500)}
+.skip{position:absolute;left:-999px;top:8px;background:var(--gold-500);color:var(--navy-900);padding:8px 14px;border-radius:8px;z-index:100;font-weight:700}
+.skip:focus{left:8px}
+code{font-family:var(--mono);font-size:.88em;background:var(--royal-100);color:var(--navy-900);padding:.1em .38em;border-radius:5px}
+
+/* top bar */
+.topbar{position:sticky;top:0;z-index:50;background:rgba(6,15,48,.96);backdrop-filter:blur(8px);color:#fff;border-bottom:1px solid rgba(255,194,26,.35)}
+.topbar-in{max-width:1120px;margin:0 auto;padding:0 20px;display:flex;align-items:center;gap:18px;height:56px}
+.brand{font-family:var(--serif);font-weight:700;font-size:1rem;color:#fff;white-space:nowrap;display:flex;align-items:center;gap:10px;text-decoration:none}
+.brand i{width:10px;height:10px;background:var(--gold-500);border-radius:50%;display:inline-block}
+.nav{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;flex:1;min-width:0}
+.nav::-webkit-scrollbar{display:none}
+.nav a{color:#C9D5F8;text-decoration:none;font-size:.84rem;font-weight:600;padding:8px 11px;border-radius:999px;white-space:nowrap}
+.nav a:hover{color:#fff;background:rgba(255,255,255,.08)}
+.nav a.on{background:var(--gold-500);color:var(--navy-900)}
+.progress{position:absolute;left:0;bottom:-1px;height:3px;width:0;background:var(--gold-500)}
+@media (max-width:640px){.brand span{display:none}}
+
+/* hero */
+.hero{position:relative;overflow:hidden;background:radial-gradient(1200px 500px at 85% -10%,#1F46C8 0%,rgba(31,70,200,0) 60%),linear-gradient(160deg,var(--navy-950),var(--navy-900) 55%,var(--navy-800));color:#fff;padding:84px 0 92px}
+.hero svg.deco{position:absolute;right:-40px;top:0;height:100%;width:min(640px,70%);opacity:.5;pointer-events:none}
+.hero .wrap{position:relative}
+.eyebrow{display:inline-block;font-size:.78rem;letter-spacing:.14em;text-transform:uppercase;font-weight:700;color:var(--navy-900);background:var(--gold-500);padding:5px 12px;border-radius:999px}
+.hero h1{font-family:var(--serif);font-size:clamp(2.3rem,6vw,4.2rem);line-height:1.08;margin:22px 0 14px;letter-spacing:-.01em;max-width:14ch}
+.hero p.sub{font-size:clamp(1.05rem,2.2vw,1.3rem);color:#D6E0FF;max-width:44ch;margin:0 0 28px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1px solid rgba(255,194,26,.6);color:var(--gold-200);padding:5px 12px;border-radius:999px;font-size:.84rem;font-weight:600}
+
+/* layout */
+.wrap{max-width:1120px;margin:0 auto;padding:0 20px}
+.prose{max-width:740px}
+main{padding-bottom:40px}
+section.sec{padding:72px 0 8px}
+.sec-h{display:flex;align-items:flex-end;gap:16px;margin-bottom:24px;border-bottom:2px solid var(--line);padding-bottom:16px}
+.num{font-family:var(--serif);font-size:3rem;line-height:1;font-weight:700;color:var(--gold-500);background:var(--navy-900);padding:10px 14px 6px;border-radius:12px;min-width:76px;text-align:center}
+.sec-h h2{font-family:var(--serif);font-size:clamp(1.7rem,3.6vw,2.4rem);line-height:1.15;margin:0;color:var(--navy-900)}
+.sec-h p{margin:4px 0 0;color:var(--muted);font-size:.98rem;line-height:1.5}
+h3{font-family:var(--serif);font-size:1.5rem;line-height:1.25;margin:44px 0 10px;color:var(--navy-900)}
+h3 .tag{font-family:var(--sans);font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;background:var(--gold-500);color:var(--navy-900);padding:3px 9px;border-radius:999px;margin-right:10px;vertical-align:middle;font-weight:800}
+h4{margin:0 0 6px;font-size:1.02rem;color:var(--navy-900)}
+p{margin:0 0 16px}
+.lead{font-size:1.18rem;color:#243263}
+.hl{background:linear-gradient(transparent 58%,var(--gold-200) 58%);padding:0 2px}
+
+/* cards & figures */
+.card{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:22px}
+.fig{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);margin:26px 0;overflow:hidden}
+.fig-h{padding:16px 22px 0;display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.fig-h h4{font-size:1.05rem;margin:0}
+.fig-h span{font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;font-weight:800;color:var(--navy-900);background:var(--gold-500);padding:2px 9px;border-radius:999px}
+.fig-b{padding:14px 22px 20px}
+.fig-c{padding:12px 22px 18px;font-size:.88rem;color:var(--muted);border-top:1px solid var(--line);background:var(--royal-50);line-height:1.55}
+.fig.dark{background:var(--navy-900);border-color:var(--navy-800);color:#fff;--ax:#B9C6EE;--grid:rgba(255,255,255,.13);--txt:#D6DFFA}
+.fig.dark .fig-h h4{color:#fff}
+.fig.dark .fig-c{background:var(--navy-950);color:#C3D0F5;border-color:rgba(255,255,255,.1)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.grid2>*,.grid3>*,.grid4>*{min-width:0}
+@media (max-width:860px){.grid2,.grid3{grid-template-columns:1fr}.grid4{grid-template-columns:1fr 1fr}}
+@media (max-width:480px){.grid4{grid-template-columns:1fr}}
+
+.stat{background:var(--paper);border:1px solid var(--line);border-top:4px solid var(--royal-600);border-radius:12px;padding:14px 16px}
+.stat b{display:block;font-family:var(--serif);font-size:1.9rem;line-height:1.1;color:var(--navy-900)}
+.stat span{font-size:.86rem;color:var(--muted);line-height:1.4;display:block;margin-top:4px}
+.stat.gold{border-top-color:var(--gold-500)}
+
+.callout{border-radius:14px;padding:16px 20px;margin:22px 0;border:1px solid var(--royal-200);background:var(--royal-50);border-left:6px solid var(--royal-600)}
+.callout.gold{background:var(--gold-100);border-color:var(--gold-200);border-left-color:var(--gold-500)}
+.callout .lab{display:inline-block;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;font-weight:800;color:var(--royal-700);margin-bottom:4px}
+.callout.gold .lab{color:var(--gold-700)}
+.callout p:last-child{margin-bottom:0}
+.try{background:var(--navy-900);color:#EAF0FF;border-radius:14px;padding:18px 22px;margin:22px 0;border-left:6px solid var(--gold-500)}
+.try .lab{display:inline-block;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;font-weight:800;color:var(--gold-500);margin-bottom:4px}
+.try p:last-child{margin-bottom:0}
+.try code{background:rgba(255,255,255,.12);color:var(--gold-200)}
+
+details{background:var(--paper);border:1px solid var(--line);border-radius:12px;margin:14px 0;overflow:hidden}
+details>summary{cursor:pointer;padding:13px 18px;font-weight:700;color:var(--navy-900);list-style:none;display:flex;align-items:center;gap:10px}
+details>summary::-webkit-details-marker{display:none}
+details>summary::before{content:"+";display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--navy-900);color:var(--gold-500);font-weight:800;flex:none;line-height:1}
+details[open]>summary::before{content:"\2212"}
+details>summary:hover{background:var(--royal-50)}
+details .dbody{padding:4px 18px 16px}
+details.code{background:var(--navy-950);border-color:var(--navy-800)}
+details.code>summary{color:#E6EDFF}
+details.code>summary:hover{background:var(--navy-900)}
+details.code .dbody{padding:0 0 4px}
+pre{margin:0;overflow-x:auto;padding:14px 18px;font-family:var(--mono);font-size:.82rem;line-height:1.6;color:#E6EDFF;tab-size:4}
+pre.out{background:rgba(255,194,26,.08);border-top:1px dashed rgba(255,194,26,.5);color:var(--gold-200)}
+pre .k{color:#FFC21A}pre .s{color:#9DE3B2}pre .c{color:#8FA3D8;font-style:italic}pre .n{color:#8FB0FF}
+.outlab{font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;font-weight:800;color:var(--gold-500);padding:8px 18px 0;background:rgba(255,194,26,.08)}
+
+/* controls */
+.btn{font:inherit;font-weight:700;font-size:.9rem;border:2px solid var(--royal-600);background:var(--royal-600);color:#fff;border-radius:999px;padding:7px 16px;cursor:pointer;line-height:1.3}
+.btn:hover{background:var(--royal-700);border-color:var(--royal-700)}
+.btn.ghost{background:transparent;color:var(--royal-700)}
+.btn.ghost:hover{background:var(--royal-100)}
+.btn[aria-pressed="true"],.btn.on{background:var(--gold-500);border-color:var(--gold-500);color:var(--navy-900)}
+.btn.sm{padding:4px 12px;font-size:.84rem}
+.dark .btn.ghost{color:#fff;border-color:rgba(255,255,255,.5)}
+.dark .btn.ghost:hover{background:rgba(255,255,255,.1)}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:8px 0}
+.seg{display:inline-flex;gap:6px;flex-wrap:wrap}
+label.rng{display:grid;gap:4px;font-size:.9rem;font-weight:600;min-width:220px;flex:1}
+label.rng output{font-family:var(--mono);color:var(--royal-700);font-weight:700}
+.dark label.rng output{color:var(--gold-500)}
+input[type=range]{width:100%;accent-color:var(--royal-600);height:28px}
+.dark input[type=range]{accent-color:var(--gold-500)}
+input[type=checkbox]{accent-color:var(--gold-500);width:18px;height:18px}
+
+/* charts */
+.chart{width:100%}
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+.chart text{font-family:var(--sans);font-size:12px;fill:var(--txt)}
+.chart .grid{stroke:var(--grid);stroke-width:1}
+.chart .axis{stroke:var(--ax);stroke-width:1.2}
+.chart .vl{font-weight:700;font-size:12.5px;fill:var(--ink)}
+.dark .chart .vl{fill:#fff}
+.legend{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:6px 18px;font-size:.84rem}
+.legend li{display:flex;align-items:center;gap:7px;white-space:nowrap}
+canvas{display:block;width:100%;border-radius:10px}
+
+/* heatmap */
+.hm{display:grid;grid-template-columns:44px repeat(7,1fr);gap:3px;font-family:var(--mono);font-size:.74rem;max-width:560px}
+.hm div{padding:6px 0;text-align:center;border-radius:6px;min-height:30px}
+.hm .h{font-weight:700;color:var(--muted);background:none;font-family:var(--sans)}
+.hm .rl{color:var(--muted);font-family:var(--sans);font-weight:600;background:none;text-align:right;padding-right:6px}
+.read{display:flex;flex-wrap:wrap;gap:12px;margin-top:14px}
+.read .stat{flex:1;min-width:150px}
+
+/* loop */
+.loop{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;list-style:none;padding:0;margin:0 0 14px;counter-reset:l}
+.loop li button{width:100%;height:100%;text-align:left;font:inherit;border:2px solid var(--line);background:var(--paper);border-radius:12px;padding:12px;cursor:pointer;color:var(--ink);position:relative}
+.loop li button b{display:block;font-size:.8rem;letter-spacing:.08em;text-transform:uppercase;color:var(--royal-700)}
+.loop li button span{font-size:.93rem;line-height:1.4;display:block;margin-top:4px;font-weight:600}
+.loop li button[aria-current="step"]{background:var(--gold-500);border-color:var(--navy-900)}
+.loop li button[aria-current="step"] b{color:var(--navy-900)}
+.loopback{font-size:.88rem;font-weight:700;color:var(--royal-700);margin:0 0 10px}
+@media (max-width:760px){.loop{grid-template-columns:1fr 1fr}}
+
+/* family diagram */
+.family{display:flex;align-items:stretch;gap:10px;flex-wrap:wrap}
+.fnode{flex:1;min-width:170px;background:var(--royal-50);border:2px solid var(--royal-600);border-radius:14px;padding:14px 16px;font-weight:800;color:var(--navy-900)}
+.fnode small{display:block;font-weight:500;color:var(--muted);font-size:.86rem;line-height:1.4;margin-top:3px}
+.fnode.gold{background:var(--gold-500);border-color:var(--navy-900)}
+.fnode.gold small{color:var(--navy-900)}
+.fnode.navy{background:var(--navy-900);color:#fff;border-color:var(--navy-900)}
+.fnode.navy small{color:#C3D0F5}
+.fbranch{display:grid;gap:10px;flex:1.4;min-width:200px}
+.farrow{align-self:center;font-weight:800;color:var(--royal-700);font-size:1.4rem}
+@media (max-width:760px){.farrow{display:none}.family{flex-direction:column}}
+
+/* quiz */
+.quiz{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:22px;margin:28px 0}
+.quiz .qh{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;font-weight:800;color:var(--navy-900);background:var(--gold-500);display:inline-block;padding:2px 10px;border-radius:999px}
+.quiz .qt{font-family:var(--serif);font-size:1.22rem;line-height:1.4;margin:10px 0 14px;color:var(--navy-900);font-weight:700}
+.quiz ul{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.quiz li button{font:inherit;text-align:left;width:100%;background:var(--royal-50);border:2px solid var(--royal-200);border-radius:12px;padding:12px 14px;cursor:pointer;color:var(--ink);display:flex;gap:12px;line-height:1.5}
+.quiz li button:hover:not(:disabled){border-color:var(--royal-600);background:var(--royal-100)}
+.quiz li button .ml{flex:none;width:26px;height:26px;border-radius:50%;background:var(--navy-900);color:#fff;font-weight:800;font-size:.8rem;display:grid;place-items:center}
+.quiz li button:disabled{cursor:default}
+.quiz li button.ok{background:var(--gold-100);border-color:var(--gold-600)}
+.quiz li button.ok .ml{background:var(--gold-500);color:var(--navy-900)}
+.quiz li button.bad{background:#fff;border-color:var(--navy-900);border-style:dashed}
+.quiz .fb{margin-top:16px;padding:14px 16px;border-radius:12px;background:var(--royal-50);border-left:6px solid var(--royal-600)}
+.quiz .fb.good{background:var(--gold-100);border-left-color:var(--gold-500)}
+.quiz .fb strong{color:var(--navy-900)}
+.quiz .fb p:last-child{margin:0}
+
+/* flip cards */
+.rf{display:grid;gap:12px}
+.rf button.q{font:inherit;font-weight:700;width:100%;text-align:left;border:2px solid var(--navy-900);background:var(--navy-900);color:#fff;border-radius:12px;padding:14px 16px;cursor:pointer;display:flex;justify-content:space-between;gap:12px;align-items:center}
+.rf button.q::after{content:"Reveal";font-size:.74rem;letter-spacing:.1em;text-transform:uppercase;background:var(--gold-500);color:var(--navy-900);padding:3px 10px;border-radius:999px;flex:none}
+.rf button.q[aria-expanded="true"]::after{content:"Hide"}
+.rf .a{background:var(--gold-100);border:2px solid var(--gold-500);border-top:none;border-radius:0 0 12px 12px;padding:14px 16px;margin-top:-4px}
+.rf .a p:last-child{margin:0}
+
+/* table */
+.tablewrap{overflow-x:auto;border-radius:var(--radius);border:1px solid var(--line);box-shadow:var(--shadow);background:var(--paper)}
+table{border-collapse:collapse;width:100%;min-width:640px;font-size:.93rem}
+th,td{text-align:left;padding:12px 14px;border-bottom:1px solid var(--line);vertical-align:top;line-height:1.5}
+thead th{background:var(--navy-900);color:#fff;font-size:.8rem;letter-spacing:.06em;text-transform:uppercase}
+tbody th{color:var(--navy-900);font-weight:800;background:var(--royal-50)}
+tbody tr:last-child th,tbody tr:last-child td{border-bottom:none}
+.sw{display:inline-block;width:18px;height:10px;vertical-align:middle;margin-right:6px}
+
+.split{height:34px;display:flex;border-radius:10px;overflow:hidden;border:2px solid var(--navy-900);font-weight:800;font-size:.84rem}
+.split div{display:grid;place-items:center;white-space:nowrap;overflow:hidden}
+.pill-list{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 0;padding:0;list-style:none}
+.pill-list li{background:var(--royal-100);border:1px solid var(--royal-200);color:var(--navy-900);padding:4px 12px;border-radius:999px;font-size:.88rem;font-weight:600;font-family:var(--mono)}
+.arch{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:6px 0}
+.arch .b{background:var(--royal-600);color:#fff;border-radius:10px;padding:8px 12px;font-weight:700;font-size:.88rem;text-align:center;line-height:1.25}
+.arch .b small{display:block;font-weight:500;color:var(--royal-200);font-size:.74rem}
+.arch .b.g{background:var(--gold-500);color:var(--navy-900)}
+.arch .b.g small{color:var(--navy-900)}
+.arch .ar{font-weight:800;color:var(--royal-700)}
+ol.take{counter-reset:t;list-style:none;padding:0;margin:0;display:grid;gap:12px}
+ol.take li{counter-increment:t;background:var(--paper);border:1px solid var(--line);border-left:6px solid var(--gold-500);border-radius:12px;padding:14px 16px 14px 62px;position:relative;box-shadow:var(--shadow)}
+ol.take li::before{content:counter(t);position:absolute;left:14px;top:12px;width:34px;height:34px;border-radius:50%;background:var(--navy-900);color:var(--gold-500);display:grid;place-items:center;font-family:var(--serif);font-weight:700;font-size:1.1rem}
+
+footer{margin-top:80px;background:var(--navy-950);color:#C3D0F5;padding:44px 0;border-top:4px solid var(--gold-500)}
+footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;align-items:center}
+footer strong{font-family:var(--serif);font-size:1.3rem;color:#fff}
+footer a{color:var(--gold-500)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+@media (max-width:560px){body{font-size:16px}.num{font-size:2.2rem;min-width:60px}.fig-h,.fig-b,.fig-c{padding-left:16px;padding-right:16px}.sec-h{align-items:flex-start}}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="topbar">
+  <div class="topbar-in">
+    <a class="brand" href="#top"><i></i><span>Neural Network 6 post read</span></a>
+    <nav class="nav" aria-label="Sections">
+      <a href="#start">Start</a>
+      <a href="#dataset">Dataset</a>
+      <a href="#init">Initialization</a>
+      <a href="#momentum">Momentum</a>
+      <a href="#rmsprop">RMSprop</a>
+      <a href="#adam">Adam</a>
+      <a href="#race">Optimizer race</a>
+      <a href="#schedule">LR scheduling</a>
+      <a href="#recap">Recap</a>
+    </nav>
+  </div>
+  <div class="progress" id="progress" aria-hidden="true"></div>
+</header>
+
+<div class="hero" id="top">
+  <svg class="deco" viewBox="0 0 640 480" aria-hidden="true" focusable="false">
+    <g stroke="#FFC21A" stroke-opacity=".35" stroke-width="1.2" fill="none">
+      <path d="M80 80L260 40M80 80L250 150M80 80L240 270M80 200L260 40M80 200L250 150M80 200L240 270M80 320L250 150M80 320L240 270M80 320L260 400M80 440L240 270M80 440L260 400"/>
+      <path d="M260 40L450 90M260 40L450 210M250 150L450 90M250 150L450 210M250 150L450 330M240 270L450 210M240 270L450 330M260 400L450 330M260 400L450 440"/>
+      <path d="M450 90L600 200M450 210L600 200M450 210L600 330M450 330L600 200M450 330L600 330M450 440L600 330"/>
+    </g>
+    <g fill="#0A1A4A" stroke="#FFC21A" stroke-width="2">
+      <circle cx="80" cy="80" r="10"/><circle cx="80" cy="200" r="10"/><circle cx="80" cy="320" r="10"/><circle cx="80" cy="440" r="10"/>
+      <circle cx="260" cy="40" r="10"/><circle cx="250" cy="150" r="10"/><circle cx="240" cy="270" r="10"/><circle cx="260" cy="400" r="10"/>
+      <circle cx="450" cy="90" r="10"/><circle cx="450" cy="210" r="10"/><circle cx="450" cy="330" r="10"/><circle cx="450" cy="440" r="10"/>
+      <circle cx="600" cy="200" r="10"/><circle cx="600" cy="330" r="10"/>
+    </g>
+  </svg>
+  <div class="wrap">
+    <span class="eyebrow">Interactive learning read</span>
+    <h1>Neural Network 6 post read</h1>
+    <p class="sub">Weight initialization and optimizers in PyTorch: where weights start, and how they move from there.</p>
+    <ul class="chips" style="list-style:none;padding:0;margin:0">
+      <li class="chip">Symmetry breaking</li><li class="chip">Xavier vs He</li><li class="chip">Momentum</li><li class="chip">RMSprop</li><li class="chip">Adam</li><li class="chip">LR scheduling</li>
+    </ul>
+  </div>
+</div>
+
+<main id="main" class="wrap">
+
+<!-- ============ START ============ -->
+<section class="sec" id="start" aria-labelledby="h-start">
+  <header class="sec-h"><span class="num">00</span><div><h2 id="h-start">Does it matter where weights start?</h2><p>The question behind everything in this read.</p></div></header>
+  <div class="prose">
+    <p class="lead">Take two networks with identical architecture, identical data and identical everything, except for how their weights start. One begins at all zeros, the other with random values. Same training, same number of epochs. <span class="hl">Do they end up learning the same thing?</span></p>
+    <p>The natural guess is that it shouldn't matter as long as training runs long enough: both will converge eventually, perhaps one more slowly. That assumption is exactly what this read breaks.</p>
+    <div class="row"><button class="btn" id="hookBtn" aria-expanded="false" aria-controls="hookAns">Commit to a guess, then see what happens</button></div>
+    <div id="hookAns" class="callout gold" hidden>
+      <span class="lab">The short answer</span>
+      <p>No. A network that starts with identical weights doesn't learn slowly, it doesn't learn at all: in the lecture's run, the zero-initialized network ended at chance-level accuracy after 200 epochs. And even random weights can fail if their <em>scale</em> is wrong. Section 02 shows both failures, then the rest of the read covers how the optimizer moves the weights once they have a sensible start.</p>
+    </div>
+  </div>
+
+  <div class="grid2" style="margin-top:28px">
+    <div class="card">
+      <h4>By the end you can</h4>
+      <ul style="margin:8px 0 0;padding-left:20px">
+        <li>Explain why zero (or identical) initialization breaks a network through symmetry.</li>
+        <li>Connect initialization scale to vanishing and exploding activations, a different cause from the activation-driven version.</li>
+        <li>Choose Xavier or He initialization by activation function, and implement both with <code>nn.init</code>.</li>
+        <li>Implement and compare SGD, momentum, RMSprop and Adam with <code>torch.optim</code>.</li>
+        <li>Explain Adam's bias correction intuitively, and why learning-rate scheduling still helps Adam.</li>
+        <li>Spot a realistic AI-suggested initializer or optimizer mismatch using evidence.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4>Assumed background</h4>
+      <p style="margin-top:8px">This read builds on Classes 1&ndash;2 and the PyTorch session in between. Tensors, autograd, <code>nn.Module</code> and a basic training loop are assumed knowledge and are not re-taught here.</p>
+      <h4 style="margin-top:14px">How the read is organized</h4>
+      <p style="margin-bottom:0">Each section pairs an explanation with the lecture's actual results, an interactive visual, and a short knowledge check. Code and its output sit in collapsible blocks.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ DATASET ============ -->
+<section class="sec" id="dataset" aria-labelledby="h-dataset">
+  <header class="sec-h"><span class="num">01</span><div><h2 id="h-dataset">The 24Seven business case</h2><p>One dataset, used for every experiment that follows.</p></div></header>
+  <div class="prose">
+    <p>A wholesale distributor's stores are classified into three categories according to their purchase patterns. The business question is a practical one: <strong>which stores need which inventory strategy?</strong> Each store is described by seven features.</p>
+    <ul class="pill-list" aria-label="Features"><li>Fresh</li><li>Milk</li><li>Grocery</li><li>Frozen</li><li>Detergents_Paper</li><li>Delicassen</li><li>Region</li></ul>
+  </div>
+
+  <div class="grid4" style="margin-top:24px">
+    <div class="stat"><b>440</b><span>stores (samples)</span></div>
+    <div class="stat"><b>7</b><span>features per store</span></div>
+    <div class="stat"><b>3</b><span>store categories (classes)</span></div>
+    <div class="stat gold"><b>59.3%</b><span>of variance explained by the top-2 PCA components</span></div>
+  </div>
+
+  <div class="grid2" style="margin-top:20px">
+    <figure class="fig" style="margin:0">
+      <div class="fig-h"><h4>Class balance</h4><span>From the lecture run</span></div>
+      <div class="fig-b" id="classBars" role="img" aria-label="Class counts: class 0 has 148 stores, class 1 has 143, class 2 has 149."></div>
+      <figcaption class="fig-c">Nearly balanced, so chance-level accuracy for three classes is about 33%, a baseline that returns in the next section.</figcaption>
+    </figure>
+    <figure class="fig" style="margin:0">
+      <div class="fig-h"><h4>Train / validation / test split</h4><span>From the lecture run</span></div>
+      <div class="fig-b">
+        <div class="split" role="img" aria-label="Train 356 samples, validation 40, test 44">
+          <div style="flex:356;background:var(--royal-600);color:#fff">Train 356</div>
+          <div style="flex:40;background:var(--gold-500);color:var(--navy-900)">40</div>
+          <div style="flex:44;background:var(--navy-900);color:#fff">44</div>
+        </div>
+        <ul class="legend" style="margin-top:12px">
+          <li><span class="sw" style="background:var(--royal-600)"></span>Train (356)</li>
+          <li><span class="sw" style="background:var(--gold-500);outline:1px solid var(--navy-900)"></span>Validation (40)</li>
+          <li><span class="sw" style="background:var(--navy-900)"></span>Test (44)</li>
+        </ul>
+      </div>
+      <figcaption class="fig-c">Stratified splits (10% test, then 10% of the remainder for validation). A <code>StandardScaler</code> is fit on the training set only, then applied to validation and test.</figcaption>
+    </figure>
+  </div>
+
+  <div class="callout">
+    <span class="lab">What the PCA projection shows</span>
+    <p>Projected to two dimensions, the three classes overlap, with no clean linear split. It is the same signal the spiral dataset gave in Class 1: this problem needs a non-linear model, not a straight line.</p>
+  </div>
+
+  <details class="code"><summary>Code: build, project and split the data</summary><div class="dbody">
+<pre><code data-lang="py">import numpy as np
+import matplotlib.pyplot as plt
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from sklearn.datasets import make_classification
+from sklearn.decomposition import PCA
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+
+np.random.seed(42)
+torch.manual_seed(42)
+device = 'cpu'
+
+feature_names = ['Fresh', 'Milk', 'Grocery', 'Frozen', 'Detergents_Paper', 'Delicassen', 'Region']
+
+X, y = make_classification(n_samples=440, n_features=7, n_informative=6, n_redundant=1,
+                            n_classes=3, n_clusters_per_class=2, class_sep=1.0,
+                            flip_y=0.03, random_state=42)
+
+print("Samples:", X.shape[0], " Features:", X.shape[1], " Classes:", len(np.unique(y)))
+print("Class counts:", np.bincount(y))
+
+pca = PCA(n_components=2)
+Xp = pca.fit_transform(X)
+print(f"top-2 components explain {pca.explained_variance_ratio_.sum():.1%} of the variance")
+
+X_train_val, X_test, y_train_val, y_test = train_test_split(X, y, test_size=0.1, random_state=42, stratify=y)
+X_train, X_val, y_train, y_val = train_test_split(X_train_val, y_train_val, test_size=0.1, random_state=42, stratify=y_train_val)
+
+scaler = StandardScaler()
+X_train = scaler.fit_transform(X_train)
+X_val = scaler.transform(X_val)
+X_test = scaler.transform(X_test)
+
+Xtr = torch.tensor(X_train, dtype=torch.float32)
+ytr = torch.tensor(y_train, dtype=torch.long)
+Xv = torch.tensor(X_val, dtype=torch.float32)
+yv = torch.tensor(y_val, dtype=torch.long)
+
+print(f"train {X_train.shape}  val {X_val.shape}  test {X_test.shape}")</code></pre>
+<div class="outlab">Output</div>
+<pre class="out"><code>Samples: 440  Features: 7  Classes: 3
+Class counts: [148 143 149]
+top-2 components explain 59.3% of the variance
+train (356, 7)  val (40, 7)  test (44, 7)</code></pre>
+  </div></details>
+</section>
+
+<!-- ============ INIT ============ -->
+<section class="sec" id="init" aria-labelledby="h-init">
+  <header class="sec-h"><span class="num">02</span><div><h2 id="h-init">Weight initialization: where weights start</h2><p>Three connected experiments on one architecture.</p></div></header>
+  <div class="prose">
+    <p>Every experiment in this section uses the same network: a stack of four hidden layers of 32 ReLU units on the seven input features, ending in three outputs.</p>
+  </div>
+  <div class="fig" style="padding:16px 22px">
+    <div class="arch" role="img" aria-label="Network: 7 inputs, then four Linear 32 plus ReLU layers, then a Linear layer with 3 outputs">
+      <div class="b g">Input<small>7 features</small></div><span class="ar">&rarr;</span>
+      <div class="b">Linear 7&rarr;32<small>+ ReLU</small></div><span class="ar">&rarr;</span>
+      <div class="b">Linear 32&rarr;32<small>+ ReLU</small></div><span class="ar">&rarr;</span>
+      <div class="b">Linear 32&rarr;32<small>+ ReLU</small></div><span class="ar">&rarr;</span>
+      <div class="b">Linear 32&rarr;32<small>+ ReLU</small></div><span class="ar">&rarr;</span>
+      <div class="b g">Linear 32&rarr;3<small>class scores</small></div>
+    </div>
+  </div>
+
+  <h3><span class="tag">Part 1</span>Zero initialization</h3>
+  <div class="prose">
+    <p>Initialize every weight to zero and train with plain full-batch SGD (learning rate 0.05, 200 epochs). Here is what happened.</p>
+  </div>
+  <div class="grid4">
+    <div class="stat gold"><b>1.0986 &rarr; 1.0985</b><span>loss, first epoch to last. ln(3) &asymp; 1.0986 is the loss of guessing uniformly among 3 classes.</span></div>
+    <div class="stat"><b>33.7%</b><span>train accuracy, against 33.3% chance level for three classes</span></div>
+    <div class="stat"><b>True</b><span>all rows of the first hidden layer's weights are identical</span></div>
+    <div class="stat"><b>0.0</b><span>max difference between any two rows of that layer</span></div>
+  </div>
+  <div class="prose" style="margin-top:20px">
+    <p>The loss barely moved. Why would starting at zero, specifically, cause that, rather than just a slow start? The answer is in the weights: every row is exactly identical, not similar, identical to the last decimal.</p>
+  </div>
+
+  <figure class="fig">
+    <div class="fig-h"><h4>Inside the first hidden layer</h4><span>Interactive</span></div>
+    <div class="fig-b">
+      <div class="row" role="group" aria-label="Initialization choice">
+        <div class="seg">
+          <button class="btn" id="hmZero" aria-pressed="true">Zero init</button>
+          <button class="btn" id="hmRand" aria-pressed="false">Random init</button>
+        </div>
+      </div>
+      <div class="hm" id="hm" role="img" aria-label="Weight matrix of the first hidden layer, 8 neurons by 7 inputs"></div>
+      <div class="read">
+        <div class="stat"><b id="hmDiff">0.0</b><span id="hmDiffT">max difference between any two neurons' weights</span></div>
+        <div class="stat gold"><b id="hmVerd">One neuron, copied</b><span id="hmVerdT"></span></div>
+      </div>
+    </div>
+    <figcaption class="fig-c"><strong>What is real and what is illustrative:</strong> the zero-init matrix reflects the lecture's result (every row identical, max difference 0.0). The random-init matrix uses made-up values purely to show what distinct neurons look like. Rows shown are 8 of the 32 neurons; blue cells are negative weights, gold cells positive, and every cell prints its value.</figcaption>
+  </figure>
+
+  <div class="prose">
+    <h4>Why it never recovers</h4>
+    <p>With all weights at zero, every neuron in a layer computes the exact same output from the same input, so every neuron gets the exact same gradient and the exact same update. Step through the loop below.</p>
+  </div>
+  <div class="fig">
+    <div class="fig-b">
+      <ol class="loop" id="loop"></ol>
+      <p class="loopback">&#8635; Back to step 1, on every epoch, no matter how many run.</p>
+      <div class="row"><button class="btn ghost sm" id="loopPrev">Previous step</button><button class="btn sm" id="loopNext">Next step</button></div>
+      <p id="loopText" aria-live="polite" style="margin:10px 0 0"></p>
+    </div>
+  </div>
+  <div class="callout gold">
+    <span class="lab">Key idea: symmetry breaking</span>
+    <p>The whole layer is stuck acting like one neuron, forever. Random initialization isn't a formality: it is what lets different neurons become different neurons.</p>
+  </div>
+
+  <details class="code"><summary>Code: the model factory, training loop and weight check</summary><div class="dbody">
+<pre><code data-lang="py">def make_model(init_scheme, seed=0):
+    torch.manual_seed(seed)
+    model = nn.Sequential(
+        nn.Linear(7, 32), nn.ReLU(),
+        nn.Linear(32, 32), nn.ReLU(),
+        nn.Linear(32, 32), nn.ReLU(),
+        nn.Linear(32, 32), nn.ReLU(),
+        nn.Linear(32, 3),
+    )
+    for layer in model:
+        if isinstance(layer, nn.Linear):
+            if init_scheme == 'zero':
+                nn.init.zeros_(layer.weight)
+            elif init_scheme == 'xavier':
+                nn.init.xavier_uniform_(layer.weight)
+            elif init_scheme == 'he':
+                nn.init.kaiming_uniform_(layer.weight, nonlinearity='relu')
+            nn.init.zeros_(layer.bias)
+    return model.to(device)
+
+
+def train_full_batch(model, epochs=200, lr=0.05):
+    opt = optim.SGD(model.parameters(), lr=lr)
+    crit = nn.CrossEntropyLoss()
+    losses = []
+    for _ in range(epochs):
+        opt.zero_grad()
+        loss = crit(model(Xtr), ytr)
+        loss.backward()
+        opt.step()
+        losses.append(loss.item())
+    return losses
+
+
+model_zero = make_model('zero')
+losses_zero = train_full_batch(model_zero)
+acc_zero = (model_zero(Xtr).argmax(1) == ytr).float().mean().item()
+
+print(f"loss: {losses_zero[0]:.4f} -> {losses_zero[-1]:.4f}")
+print(f"train accuracy: {acc_zero:.1%}  (chance level for 3 classes: 33.3%)")
+
+# Check the actual weights: is every neuron in a layer identical?
+W1 = model_zero[0].weight.detach()
+print("all rows of the first hidden layer identical:", torch.allclose(W1, W1[0:1].expand_as(W1)))
+print("max difference between any two rows:", (W1 - W1[0:1]).abs().max().item())</code></pre>
+<div class="outlab">Output</div>
+<pre class="out"><code>loss: 1.0986 -> 1.0985
+train accuracy: 33.7%  (chance level for 3 classes: 33.3%)
+all rows of the first hidden layer identical: True
+max difference between any two rows: 0.0</code></pre>
+  </div></details>
+
+  <div class="quiz" data-quiz="q1"></div>
+
+  <h3><span class="tag">Part 2</span>Random, but the wrong scale</h3>
+  <div class="prose">
+    <p>Random weights break the symmetry, but they bring a second question: how big should the random values be? The lecture's test builds a 10-layer, 100-unit-wide ReLU network, feeds in a batch of 64 random inputs, and records the standard deviation of the activations after each layer, for three weight scales.</p>
+  </div>
+  <div class="grid3">
+    <div class="stat gold"><b>2.928 &rarr; 236,230.672</b><span><strong>Too large</strong> (std 0.5): layer 1 to layer 10 activation std. Explodes.</span></div>
+    <div class="stat"><b>0.058 &rarr; 0.000</b><span><strong>Too small</strong> (std 0.01): layer 1 to layer 10. Vanishes to zero.</span></div>
+    <div class="stat" style="border-top-color:var(--navy-900)"><b>0.811 &rarr; 0.570</b><span><strong>He-scaled</strong> (std 0.141, from &radic;(2/100)): stays roughly stable across all 10 layers.</span></div>
+  </div>
+  <div class="prose" style="margin-top:18px">
+    <p>Too-large initialization multiplies the activation magnitude at every layer until it is astronomical. Too-small initialization shrinks it to zero within a few layers, which is dead signal, the same practical outcome as the zero-init case but less obvious. Try it yourself below.</p>
+  </div>
+
+  <figure class="fig">
+    <div class="fig-h"><h4>Activation size across 10 layers</h4><span>Live simulation</span></div>
+    <div class="fig-b">
+      <div class="row">
+        <label class="rng"><span>Your weight std: <output id="isOut">0.250</output>
+          </span><input type="range" id="isStd" min="-2.5" max="0" step="0.01" value="-0.6" aria-label="Weight standard deviation, logarithmic scale">
+        </label>
+        <button class="btn ghost sm" id="isRoll">New random draw</button>
+      </div>
+      <div class="chart" id="isChart"></div>
+      <div class="read">
+        <div class="stat"><b id="isMult">&times;1.00</b><span>typical change in activation size per layer, for your std</span></div>
+        <div class="stat gold"><b id="isVerd">&nbsp;</b><span id="isVerdT">&nbsp;</span></div>
+      </div>
+    </div>
+    <figcaption class="fig-c"><strong>Illustrative:</strong> this runs the same kind of test in your browser with fresh random numbers (10 layers, width 100, batch of 64), so its values will differ slightly from the lecture's run printed above. The y-axis is logarithmic, one gridline per factor of ten. The three preset lines match the three cases: too large, too small, and He-scaled. Values smaller than the bottom gridline are drawn at the bottom edge.</figcaption>
+  </figure>
+
+  <div class="callout gold">
+    <span class="lab">Common misconception</span>
+    <p>&ldquo;Exploding and vanishing gradients are only about activation function choice.&rdquo; The version covered in Classes 1&ndash;2 was activation-driven. This is a different cause of the same symptom: even with ReLU, the wrong initialization <em>scale</em> alone reproduces it.</p>
+  </div>
+
+  <details class="code"><summary>Code: build a deep ReLU net and measure activation std</summary><div class="dbody">
+<pre><code data-lang="py">def build_deep_relu_net(n_layers, width, init_std):
+    layers = []
+    for _ in range(n_layers):
+        lin = nn.Linear(width, width)
+        nn.init.normal_(lin.weight, mean=0.0, std=init_std)
+        nn.init.zeros_(lin.bias)
+        layers += [lin, nn.ReLU()]
+    return nn.Sequential(*layers)
+
+x = torch.randn(64, 100)
+
+for label, std in [("too large", 0.5), ("too small", 0.01), ("He-scaled", (2/100)**0.5)]:
+    net = build_deep_relu_net(n_layers=10, width=100, init_std=std)
+    out = x
+    stds = []
+    for layer in net:
+        out = layer(out)
+        if isinstance(layer, nn.ReLU):
+            stds.append(out.std().item())
+    print(f"{label:12s} (std={std:.3f}): layer 1 -> layer 10 activation std = "
+          f"{stds[0]:.3f} -> {stds[-1]:.3f}")</code></pre>
+<div class="outlab">Output</div>
+<pre class="out"><code>too large    (std=0.500): layer 1 -> layer 10 activation std = 2.928 -> 236230.672
+too small    (std=0.010): layer 1 -> layer 10 activation std = 0.058 -> 0.000
+He-scaled    (std=0.141): layer 1 -> layer 10 activation std = 0.811 -> 0.570</code></pre>
+  </div></details>
+
+  <h3><span class="tag">Part 3</span>Xavier vs. He</h3>
+  <div class="prose">
+    <p><strong>Xavier (Glorot)</strong> initialization sizes the random spread to keep variance stable assuming a symmetric activation such as tanh. <strong>He (Kaiming)</strong> does the same math for ReLU specifically: ReLU zeroes out half its input range, so it needs a larger spread to compensate. Class 2 used He initialization without fully explaining why. It is built for exactly the activation function used throughout this course.</p>
+  </div>
+  <figure class="fig">
+    <div class="fig-h"><h4>Full-batch SGD, 100 epochs, same ReLU network</h4><span>From the lecture run</span></div>
+    <div class="fig-b"><div class="chart" id="xhChart" role="img" aria-label="Loss at first and last epoch. Xavier: 1.1196 then 0.7770. He: 1.7421 then 0.4458."></div></div>
+    <figcaption class="fig-c">He starts at a higher loss (1.7421 vs 1.1196) but converges noticeably lower (0.4458 vs 0.7770) on this exact ReLU network. Xavier isn't broken, it still trains. It is just tuned for the wrong activation.</figcaption>
+  </figure>
+
+  <figure class="fig">
+    <div class="fig-h"><h4>Which initializer for my activation?</h4><span>Interactive</span></div>
+    <div class="fig-b">
+      <div class="row" role="group" aria-label="Activation function"><span style="font-weight:700">My activation is</span>
+        <div class="seg"><button class="btn" id="actRelu" aria-pressed="true">ReLU</button><button class="btn" id="actTanh" aria-pressed="false">tanh (symmetric)</button></div>
+      </div>
+      <div class="callout gold" style="margin:12px 0 0" aria-live="polite"><span class="lab" id="actLab">Use He (Kaiming)</span><p id="actTxt" style="margin:0"></p></div>
+    </div>
+  </figure>
+
+  <details class="code"><summary>Code: compare the two initializers</summary><div class="dbody">
+<pre><code data-lang="py">def train_and_report(init_scheme, label):
+    model = make_model(init_scheme)
+    losses = train_full_batch(model, epochs=100)
+    print(f"{label:10s}: loss[0]={losses[0]:.4f}  loss[-1]={losses[-1]:.4f}")
+    return losses
+
+l_xavier = train_and_report('xavier', 'Xavier')
+l_he = train_and_report('he', 'He')</code></pre>
+<div class="outlab">Output</div>
+<pre class="out"><code>Xavier    : loss[0]=1.1196  loss[-1]=0.7770
+He        : loss[0]=1.7421  loss[-1]=0.4458</code></pre>
+  </div></details>
+
+  <div class="try">
+    <span class="lab">Try it: audit an AI answer</span>
+    <p>Ask an AI assistant which initializer to use for this network. If it says Xavier without flagging the ReLU mismatch, that is worth catching. It is the same choice the original version of this business case made. Verify the gap against the two final-loss numbers above (0.7770 for Xavier, 0.4458 for He) rather than taking either answer, the AI's or your own guess, on faith.</p>
+  </div>
+
+  <details><summary>Interview angle: &ldquo;Your model trains but never beats random guessing. First three things you'd check?&rdquo;</summary><div class="dbody">
+    <p>All-identical or all-zero weights (symmetry); an initialization scale that has exploded or vanished the activations before training even starts; and a learning rate that is actively working against the first two. Not a data problem and not a bug in the loss function, those are further down the checklist.</p>
+  </div></details>
+</section>
+
+<!-- ============ MOMENTUM ============ -->
+<section class="sec" id="momentum" aria-labelledby="h-mom">
+  <header class="sec-h"><span class="num">03</span><div><h2 id="h-mom">Momentum, properly named</h2><p>A running average of gradients, now one keyword argument.</p></div></header>
+  <div class="prose">
+    <p>Class 2 built momentum by hand with a manual velocity update. In PyTorch it is <code>momentum=0.9</code>. The finding from Class 2 still holds: plain SGD takes the same size step regardless of how consistent the recent gradients have been. Momentum keeps a running average of gradients, a <strong>velocity</strong>, so a direction that has stayed downhill for a while builds speed, and noisy back-and-forth directions cancel out.</p>
+  </div>
+
+  <figure class="fig">
+    <div class="fig-h"><h4>Same learning rate (0.05), same epochs (50): momentum is the only difference</h4><span>From the lecture run</span></div>
+    <div class="fig-b"><div class="chart" id="momChart" role="img" aria-label="Final training loss: plain SGD 0.3633, SGD with momentum 0.0526."></div></div>
+    <figcaption class="fig-c">Mini-batch training (batch size 128) with the He-initialized network. Momentum reaches a much lower loss at the identical learning rate.</figcaption>
+  </figure>
+
+  <figure class="fig">
+    <div class="fig-h"><h4>See the running average at work</h4><span>Interactive</span></div>
+    <div class="fig-b">
+      <div class="row" role="group" aria-label="Gradient pattern">
+        <div class="seg">
+          <button class="btn" id="emaConsistent" aria-pressed="true">Consistent direction</button>
+          <button class="btn" id="emaFlip" aria-pressed="false">Back-and-forth direction</button>
+        </div>
+      </div>
+      <div class="row"><label class="rng"><span>Momentum coefficient: <output id="emaOut">0.90</output>
+        </span><input type="range" id="emaB" min="0" max="0.99" step="0.01" value="0.9" aria-label="Momentum coefficient"></label></div>
+      <div class="chart" id="emaChart"></div>
+      <div class="read">
+        <div class="stat"><b id="emaMem">90%</b><span>of each step's velocity comes from memory (previous velocity)</span></div>
+        <div class="stat gold"><b id="emaNew">10%</b><span>comes from the fresh gradient</span></div>
+      </div>
+    </div>
+    <figcaption class="fig-c"><strong>Illustrative:</strong> a made-up noisy gradient sequence, smoothed with a running average (new velocity = coefficient &times; old velocity + (1 &minus; coefficient) &times; fresh gradient). With a consistent direction, the velocity settles near that direction's average. With a direction that flips back and forth, the velocity stays near zero because the flips cancel. The velocity starts at zero, so it takes a few steps to warm up, an effect that returns with Adam's bias correction.</figcaption>
+  </figure>
+
+  <details class="code"><summary>Code: mini-batch training, plain SGD vs momentum</summary><div class="dbody">
+<pre><code data-lang="py">def make_dataloader_batches(batch_size=128):
+    n = len(Xtr)
+    perm = torch.randperm(n)
+    return [(Xtr[perm[i:i+batch_size]], ytr[perm[i:i+batch_size]]) for i in range(0, n, batch_size)]
+
+
+def train_mini_batch(model, opt, epochs=50, batch_size=128, sched=None):
+    crit = nn.CrossEntropyLoss()
+    losses = []
+    for _ in range(epochs):
+        for Xb, yb in make_dataloader_batches(batch_size):
+            opt.zero_grad()
+            loss = crit(model(Xb), yb)
+            loss.backward()
+            opt.step()
+        if sched is not None:
+            sched.step()
+        with torch.no_grad():
+            losses.append(crit(model(Xtr), ytr).item())
+    return losses
+
+
+model_plain = make_model('he')
+losses_plain = train_mini_batch(model_plain, optim.SGD(model_plain.parameters(), lr=0.05))
+
+model_mom = make_model('he')
+losses_mom = train_mini_batch(model_mom, optim.SGD(model_mom.parameters(), lr=0.05, momentum=0.9))
+
+print(f"plain SGD:    loss[-1] = {losses_plain[-1]:.4f}")
+print(f"with momentum: loss[-1] = {losses_mom[-1]:.4f}")</code></pre>
+<div class="outlab">Output</div>
+<pre class="out"><code>plain SGD:    loss[-1] = 0.3633
+with momentum: loss[-1] = 0.0526</code></pre>
+  </div></details>
+
+  <div class="quiz" data-quiz="q2"></div>
+
+  <details><summary>Interview angle: &ldquo;What does the momentum coefficient (0.9 here) actually control?&rdquo;</summary><div class="dbody">
+    <p>How much of the previous velocity carries into the current step versus how much comes from the fresh gradient: 0.9 means 90% memory, 10% new information. Push it toward 1 and the optimizer gets harder to redirect; push it toward 0 and it is closer to plain SGD.</p>
+  </div></details>
+</section>
+
+<!-- ============ RMSPROP ============ -->
+<section class="sec" id="rmsprop" aria-labelledby="h-rms">
+  <header class="sec-h"><span class="num">04</span><div><h2 id="h-rms">RMSprop: a learning rate per parameter</h2><p>A new idea, not a variant of momentum.</p></div></header>
+  <div class="prose">
+    <p>Momentum smooths the <em>direction</em> of updates. RMSprop does something different: it tracks a running average of each parameter's <em>squared</em> gradient and divides that parameter's step by the square root of it. A parameter with consistently large gradients gets its steps shrunk; a parameter with small, gentle gradients gets its steps amplified. Every parameter effectively gets its own learning rate.</p>
+  </div>
+
+  <figure class="fig">
+    <div class="fig-h"><h4>Per-parameter step scaling</h4><span>Interactive</span></div>
+    <div class="fig-b">
+      <div class="grid2">
+        <label class="rng"><span>Steep parameter's typical gradient: <output id="rsA">4.0</output>
+          </span><input type="range" id="rsSteep" min="0.5" max="10" step="0.1" value="4" aria-label="Typical gradient of the steep parameter"></label>
+        <label class="rng"><span>Shallow parameter's typical gradient: <output id="rsB">0.20</output>
+          </span><input type="range" id="rsShallow" min="0.05" max="1" step="0.01" value="0.2" aria-label="Typical gradient of the shallow parameter"></label>
+      </div>
+      <div class="chart" id="rsChart"></div>
+    </div>
+    <figcaption class="fig-c"><strong>Illustrative:</strong> shown for steady, consistent gradients, in units of the learning rate. A raw SGD step is proportional to the gradient, so the steep parameter steps far more than the shallow one. Dividing by the square root of the running average of squared gradients brings both to a comparable size: large-gradient steps shrink, small-gradient steps grow.</figcaption>
+  </figure>
+
+  <figure class="fig">
+    <div class="fig-h"><h4>RMSprop vs. momentum (50 epochs)</h4><span>From the lecture run</span></div>
+    <div class="fig-b">
+      <div class="row" role="group" aria-label="Metric"><div class="seg"><button class="btn" id="rmLoss" aria-pressed="true">Final loss</button><button class="btn" id="rmNoise" aria-pressed="false">Noise in last 20 epochs (std)</button></div></div>
+      <div class="chart" id="rmChart"></div>
+    </div>
+    <figcaption class="fig-c">Momentum: final loss 0.0526, noise 0.0482. RMSprop (lr 0.01, alpha 0.9): final loss 0.1019, noise 0.0855. RMSprop descends quickly early on, but its curve is visibly jumpier near the end. Adapting the per-parameter step size isn't free: dividing by a small running average can amplify noise in that direction.</figcaption>
+  </figure>
+
+  <details class="code"><summary>Code: RMSprop with <code>torch.optim</code></summary><div class="dbody">
+<pre><code data-lang="py">model_rms = make_model('he')
+losses_rms = train_mini_batch(model_rms, optim.RMSprop(model_rms.parameters(), lr=0.01, alpha=0.9))
+
+print(f"momentum: loss[-1]={losses_mom[-1]:.4f}  noise in last 20 epochs (std)={np.std(losses_mom[-20:]):.4f}")
+print(f"RMSprop:  loss[-1]={losses_rms[-1]:.4f}  noise in last 20 epochs (std)={np.std(losses_rms[-20:]):.4f}")</code></pre>
+<div class="outlab">Output</div>
+<pre class="out"><code>momentum: loss[-1]=0.0526  noise in last 20 epochs (std)=0.0482
+RMSprop:  loss[-1]=0.1019  noise in last 20 epochs (std)=0.0855</code></pre>
+  </div></details>
+
+  <div class="try">
+    <span class="lab">Try it: audit an AI answer</span>
+    <p>Ask an AI to write an SGD-with-momentum config for this network. If it hands back something like <code>lr=0.9, momentum=0.01</code>, learning rate and momentum with their typical magnitudes swapped, don't just read the line and trust it. Run it and watch the loss curve bounce without settling. A number that &ldquo;looks about right&rdquo; for the wrong hyperparameter is a very easy mistake to miss by eye alone.</p>
+  </div>
+
+  <div class="quiz" data-quiz="q3"></div>
+
+  <details><summary>Interview angle: &ldquo;RMSprop reached a lower loss than momentum at first, but you must pick one to ship. Which?&rdquo;</summary><div class="dbody">
+    <p>It depends on what the loss curve is telling you. If validation performance is what matters and RMSprop's noise doesn't hurt it, ship the faster one. If stability or reproducibility across runs matters more, momentum's smoother curve may be the safer default. &ldquo;Lower loss&rdquo; alone isn't the full decision.</p>
+  </div></details>
+</section>
+
+<!-- ============ ADAM ============ -->
+<section class="sec" id="adam" aria-labelledby="h-adam">
+  <header class="sec-h"><span class="num">05</span><div><h2 id="h-adam">Adam: momentum and RMSprop together</h2><p>Both running averages, plus bias correction.</p></div></header>
+  <div class="prose">
+    <p>Adam keeps both running averages: momentum's directional average of the gradient, and RMSprop's magnitude average of the squared gradient. There is one more piece. Both averages start at zero, so early on they are biased toward zero and understate the true gradient. Adam divides each by a correction factor that is large at step 1 and fades to 1 as training goes on. This is <strong>bias correction</strong>, and it is the reason Adam behaves sensibly in its first few steps instead of barely moving.</p>
+  </div>
+
+  <div class="fig"><div class="fig-h"><h4>How the optimizers relate</h4></div><div class="fig-b">
+    <div class="family">
+      <div class="fnode">Plain SGD<small>one fixed step size for everything</small></div>
+      <span class="farrow" aria-hidden="true">&rarr;</span>
+      <div class="fbranch">
+        <div class="fnode">+ Momentum<small>smooths the direction of updates</small></div>
+        <div class="fnode">+ RMSprop<small>rescales step size per parameter</small></div>
+      </div>
+      <span class="farrow" aria-hidden="true">&rarr;</span>
+      <div class="fnode gold">Adam<small>both averages, plus bias correction for the first few steps</small></div>
+      <span class="farrow" aria-hidden="true">&rarr;</span>
+      <div class="fnode navy">+ LR schedule<small>shrinks the overall step near a minimum</small></div>
+    </div>
+  </div></div>
+
+  <figure class="fig">
+    <div class="fig-h"><h4>Why a zero-start average needs correcting</h4><span>Interactive</span></div>
+    <div class="fig-b">
+      <div class="row"><label class="rng"><span>Averaging coefficient: <output id="bcOut">0.90</output>
+        </span><input type="range" id="bcB" min="0.5" max="0.999" step="0.001" value="0.9" aria-label="Averaging coefficient"></label></div>
+      <div class="row"><span style="font-weight:700">Presets:</span>
+        <button class="btn ghost sm" id="bc9">0.9</button><button class="btn ghost sm" id="bc999">0.999</button></div>
+      <div class="chart" id="bcChart"></div>
+      <div class="read" id="bcRead"></div>
+    </div>
+    <figcaption class="fig-c"><strong>Illustrative:</strong> suppose the true gradient is a constant 1.0. A running average that starts at zero reports only a fraction of it in the early steps (the solid line); dividing by the correction factor restores the true value (the dashed line). The factor is large at step 1 and fades toward 1. The presets are the two coefficients Adam uses by default in PyTorch, one for each of its averages.</figcaption>
+  </figure>
+
+  <figure class="fig">
+    <div class="fig-h"><h4>Adam vs. momentum vs. RMSprop (50 epochs)</h4><span>From the lecture run</span></div>
+    <div class="fig-b">
+      <div class="row" role="group" aria-label="Metric"><div class="seg"><button class="btn" id="adLoss" aria-pressed="true">Final loss</button><button class="btn" id="adNoise" aria-pressed="false">Noise in last 20 epochs (std)</button></div></div>
+      <div class="chart" id="adChart"></div>
+    </div>
+    <figcaption class="fig-c">Adam (lr 0.005) gets both benefits here: lower loss than momentum, and less noise than RMSprop alone. That isn't guaranteed on every problem, but it is why Adam is the default most people reach for first. Lower is better on both views.</figcaption>
+  </figure>
+
+  <details class="code"><summary>Code: Adam against the other two</summary><div class="dbody">
+<pre><code data-lang="py">model_adam = make_model('he')
+losses_adam = train_mini_batch(model_adam, optim.Adam(model_adam.parameters(), lr=0.005))
+
+for name, losses in [('momentum', losses_mom), ('RMSprop', losses_rms), ('Adam', losses_adam)]:
+    print(f"{name:9s}: loss[-1]={losses[-1]:.4f}  noise(last 20, std)={np.std(losses[-20:]):.4f}")</code></pre>
+<div class="outlab">Output</div>
+<pre class="out"><code>momentum : loss[-1]=0.0526  noise(last 20, std)=0.0482
+RMSprop  : loss[-1]=0.1019  noise(last 20, std)=0.0855
+Adam     : loss[-1]=0.0430  noise(last 20, std)=0.0285</code></pre>
+  </div></details>
+
+  <div class="quiz" data-quiz="q4"></div>
+
+  <details><summary>Interview angle: &ldquo;Why would Adam need bias correction if momentum alone didn't need it in Class 2?&rdquo;</summary><div class="dbody">
+    <p>It isn't unique to Adam: momentum has the identical early-step bias, and Class 2 just didn't need to worry about it for a short demo. It matters more in practice with Adam because the correction interacts with the RMSprop-style denominator: an uncorrected, too-small early average in the denominator would produce an artificially huge first step.</p>
+  </div></details>
+</section>
+
+<!-- ============ RACE ============ -->
+<section class="sec" id="race" aria-labelledby="h-race">
+  <header class="sec-h"><span class="num">06</span><div><h2 id="h-race">Optimizer race on a steep, narrow valley</h2><p>The same four optimizers, now on a surface you can see.</p></div></header>
+  <div class="prose">
+    <p>The surface is <code>0.1&middot;x&sup2; + 2.0&middot;y&sup2;</code>: sharp in one direction (y), shallow in the other (x). It is a classic case where plain SGD struggles, because any learning rate large enough to make progress in the shallow direction overshoots in the steep one. All four optimizers start from the same point, (&minus;8, 4), and take 60 steps.</p>
+    <p><strong>Before pressing play, predict:</strong> which path zigzags the most, and which reaches the center most directly?</p>
+  </div>
+
+  <figure class="fig dark">
+    <div class="fig-h"><h4>Same starting point, four optimizers</h4><span>Interactive</span></div>
+    <div class="fig-b">
+      <div class="grid2" style="align-items:start">
+        <div>
+          <canvas id="raceCv" role="img" aria-label="Contour plot of an elongated valley with the paths of four optimizers from the same start toward the minimum at the origin. The step slider and table beside it give exact positions."></canvas>
+        </div>
+        <div>
+          <div class="row" role="group" aria-label="Playback">
+            <button class="btn" id="racePlay">Play</button>
+            <button class="btn ghost sm" id="raceReset">Reset</button>
+            <button class="btn ghost sm" id="raceEnd">Jump to step 60</button>
+          </div>
+          <label class="rng"><span>Step: <output id="raceOut">0</output> of 60
+            </span><input type="range" id="raceStep" min="0" max="60" step="1" value="0" aria-label="Optimization step"></label>
+          <div class="row" id="raceToggles" role="group" aria-label="Show optimizers" style="margin-top:12px"></div>
+          <div class="tablewrap" style="margin-top:10px;background:transparent;border-color:rgba(255,255,255,.2);box-shadow:none">
+            <table style="min-width:0;font-size:.78rem;color:#fff">
+              <thead><tr><th scope="col">Optimizer</th><th scope="col">(x, y)</th><th scope="col">Loss</th><th scope="col" title="Number of times y changed sign">Flips</th></tr></thead>
+              <tbody id="raceTbl"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <h4 style="margin:20px 0 4px;color:#fff">Loss at each step (log scale)</h4>
+      <div class="chart" id="raceLoss"></div>
+      <ul class="legend" id="raceLegend" style="color:#fff"></ul>
+    </div>
+    <figcaption class="fig-c">Hyperparameters: SGD lr 0.4; momentum lr 0.1 with momentum 0.9; RMSprop lr 0.1; Adam lr 0.3. The updates run live in your browser using the update rules of the four <code>torch.optim</code> classes, on the lecture's loss function. &ldquo;Flips&rdquo; counts how often the y-coordinate changes sign, a simple measure of zigzagging. Watch the shapes, not just who finishes first: final loss at step 60 depends on these specific hyperparameters.</figcaption>
+  </figure>
+
+  <details open><summary>What the paths show</summary><div class="dbody">
+    <p><strong>Plain SGD</strong> zigzags in small, tight steps in the steep direction: its y-coordinate flips sign on nearly every step, while x advances by a fixed fraction (a factor of 0.92 per step here). One learning rate has to serve two very different slopes.</p>
+    <p><strong>Momentum</strong> actually swings wider, not smaller. It carries velocity from the steep initial descent straight past the flat bottom and back: a few large oscillations instead of many small ones, before settling.</p>
+    <p><strong>RMSprop and Adam</strong> avoid both problems. Their per-parameter scaling shrinks the step in the steep direction and grows it in the shallow one, so the path runs almost straight toward the minimum.</p>
+    <p><strong>Does that make momentum worse here?</strong> Not worse, different. Its swings are fewer and shrink toward the minimum instead of persisting, and how quickly they die out is governed by one number, the momentum coefficient. It is a real trade-off, not a strict upgrade, and it is exactly why RMSprop's and Adam's per-parameter scaling exists as a different fix for the same underlying problem.</p>
+  </div></details>
+
+  <details class="code"><summary>Code: the valley and the four optimizers</summary><div class="dbody">
+<pre><code data-lang="py">def loss_fn(xy):
+    x, y = xy[0], xy[1]
+    return 0.1 * x**2 + 2.0 * y**2
+
+def run_optimizer(make_opt, start=(-8.0, 4.0), steps=60):
+    xy = torch.tensor(list(start), requires_grad=True)
+    opt = make_opt([xy])
+    path = [xy.detach().clone().tolist()]
+    for _ in range(steps):
+        opt.zero_grad()
+        loss_fn(xy).backward()
+        opt.step()
+        path.append(xy.detach().clone().tolist())
+    return np.array(path)
+
+paths = {
+    'SGD':      run_optimizer(lambda p: optim.SGD(p, lr=0.4)),
+    'Momentum': run_optimizer(lambda p: optim.SGD(p, lr=0.1, momentum=0.9)),
+    'RMSprop':  run_optimizer(lambda p: optim.RMSprop(p, lr=0.1)),
+    'Adam':     run_optimizer(lambda p: optim.Adam(p, lr=0.3)),
+}
+
+xx, yy = np.meshgrid(np.linspace(-9, 2, 200), np.linspace(-5, 5, 200))
+zz = 0.1 * xx**2 + 2.0 * yy**2
+
+plt.figure(figsize=(6, 6))
+plt.contour(xx, yy, zz, levels=20, cmap='Greys', alpha=0.5)
+for name, path in paths.items():
+    plt.plot(path[:, 0], path[:, 1], marker='.', markersize=3, label=name)
+plt.scatter([0], [0], c='red', marker='*', s=150, zorder=5, label='minimum')
+plt.legend(); plt.title('Same starting point, four optimizers')
+plt.show()</code></pre>
+  </div></details>
+
+  <div class="try">
+    <span class="lab">Try it: audit an AI answer</span>
+    <p>Ask an AI which optimizer it expects to reach the center fastest on a surface like this, before you look at the plot. Compare its reasoning, and yours, against what the paths actually show. Different runs can favor different optimizers depending on the exact shape of the surface; the reasoning matters more than getting the winner right.</p>
+  </div>
+
+  <div class="quiz" data-quiz="q5"></div>
+</section>
+
+<!-- ============ SCHEDULE ============ -->
+<section class="sec" id="schedule" aria-labelledby="h-sch">
+  <header class="sec-h"><span class="num">07</span><div><h2 id="h-sch">Learning rate scheduling: why Adam still needs decay</h2><p>Adaptive scaling is relative; it doesn't shrink the overall step.</p></div></header>
+  <div class="prose">
+    <p>Adam already adapts the step size per parameter, so why would it still need a schedule? Compare two runs with the same starting learning rate (0.03) over 40 epochs. In one the rate stays fixed. In the other it decays each epoch by <code>1 / (1 + 0.2 &middot; epoch)</code>, and decay is the only difference.</p>
+  </div>
+
+  <figure class="fig">
+    <div class="fig-h"><h4>Last 10 epochs of training loss (epochs 31&ndash;40)</h4><span>From the lecture run</span></div>
+    <div class="fig-b"><div class="chart" id="lrLast" role="img" aria-label="Loss over epochs 31 to 40. Without decay it bounces between 0.067 and 0.203. With decay it falls steadily from 0.129 to 0.086."></div><div class="read" id="lrRead"></div></div>
+    <figcaption class="fig-c">Without decay the loss bounces rather than settling, still noisy after 40 epochs. With decay it drops smoothly and monotonically. Only the last 10 epochs of each run were printed in the lecture, so those are the points shown.</figcaption>
+  </figure>
+
+  <div class="callout gold">
+    <span class="lab">Why decay still helps</span>
+    <p>Adam's per-parameter scaling adjusts the <em>relative</em> step sizes between parameters. It doesn't shrink the <em>overall</em> step as training approaches a minimum. Near a minimum, any fixed step size is eventually too big for at least some direction. Decay handles that separately.</p>
+  </div>
+
+  <figure class="fig">
+    <div class="fig-h"><h4>Design a decay schedule</h4><span>Interactive</span></div>
+    <div class="fig-b">
+      <div class="grid2">
+        <label class="rng"><span>Starting learning rate: <output id="lrA">0.030</output>
+          </span><input type="range" id="lr0" min="0.005" max="0.1" step="0.005" value="0.03" aria-label="Starting learning rate"></label>
+        <label class="rng"><span>Decay rate r0: <output id="lrB">0.20</output>
+          </span><input type="range" id="lrR" min="0" max="1" step="0.05" value="0.2" aria-label="Decay rate"></label>
+      </div>
+      <div class="chart" id="lrCurve"></div>
+      <div class="read" id="lrCurveRead"></div>
+    </div>
+    <figcaption class="fig-c">Learning rate at each epoch = starting rate &times; <code>1 / (1 + r0 &middot; epoch)</code>, as in the lecture's <code>LambdaLR</code> schedule (starting rate 0.03, r0 = 0.2, 40 epochs). Set the decay rate to 0 to see a constant learning rate.</figcaption>
+  </figure>
+
+  <details class="code"><summary>Code: Adam with and without decay</summary><div class="dbody">
+<pre><code data-lang="py">model_adam_hi = make_model('he')
+losses_hi = train_mini_batch(model_adam_hi, optim.Adam(model_adam_hi.parameters(), lr=0.03), epochs=40)
+
+print("Adam, lr=0.03, no decay -- last 10 epochs:")
+print([round(x, 3) for x in losses_hi[-10:]])
+
+from torch.optim.lr_scheduler import LambdaLR
+
+def lr_lambda(epoch, r0=0.2):
+    return 1.0 / (1 + r0 * epoch)
+
+model_adam_decay = make_model('he')
+opt_decay = optim.Adam(model_adam_decay.parameters(), lr=0.03)
+sched_decay = LambdaLR(opt_decay, lr_lambda=lr_lambda)
+losses_decay = train_mini_batch(model_adam_decay, opt_decay, epochs=40, sched=sched_decay)
+
+print("Adam, lr=0.03, with decay -- last 10 epochs:")
+print([round(x, 3) for x in losses_decay[-10:]])</code></pre>
+<div class="outlab">Output</div>
+<pre class="out"><code>Adam, lr=0.03, no decay -- last 10 epochs:
+[0.14, 0.121, 0.159, 0.132, 0.203, 0.139, 0.146, 0.088, 0.067, 0.116]
+Adam, lr=0.03, with decay -- last 10 epochs:
+[0.129, 0.122, 0.118, 0.111, 0.106, 0.102, 0.097, 0.093, 0.091, 0.086]</code></pre>
+  </div></details>
+
+  <div class="callout">
+    <span class="lab">Explore further</span>
+    <p>An external interactive tool lets you compare the effect of all the weight optimizers: <a href="https://shrijankumar1-maker.github.io/Optimiser-visualiser/" target="_blank" rel="noopener noreferrer">Interactive weight optimizers visualized (opens in a new tab)</a>.</p>
+  </div>
+
+  <div class="callout gold">
+    <span class="lab">Industry note</span>
+    <p>Production training almost always schedules the learning rate; a constant learning rate at scale is close to a beginner's mistake. The specific schedule (this simple decay, cosine annealing, warmup-then-decay) matters less than having one at all.</p>
+  </div>
+
+  <div class="try">
+    <span class="lab">Try it: audit an AI answer</span>
+    <p>Ask an AI why learning rate decay helps Adam specifically, given that Adam already adapts. Weigh its answer against the two curves above: does its explanation match what actually changed between the two runs, or does it just restate &ldquo;decay generally helps&rdquo;?</p>
+  </div>
+
+  <div class="quiz" data-quiz="q6"></div>
+</section>
+
+<!-- ============ RECAP ============ -->
+<section class="sec" id="recap" aria-labelledby="h-recap">
+  <header class="sec-h"><span class="num">08</span><div><h2 id="h-recap">Recap and rapid-fire</h2><p>What to carry forward.</p></div></header>
+
+  <h3 style="margin-top:0">Key takeaways</h3>
+  <ol class="take">
+    <li>Identical initialization breaks a network permanently, not slowly. Symmetry never breaks on its own.</li>
+    <li>Initialization <em>scale</em> alone can vanish or explode activations, independent of the activation function.</li>
+    <li>He initialization matches ReLU's math; Xavier matches symmetric activations like tanh. Pick based on what you're using.</li>
+    <li>Momentum smooths direction. RMSprop rescales step size per parameter. Adam does both, plus bias correction for its first few steps.</li>
+    <li>A fixed learning rate is a ceiling on precision near a minimum, no matter how good the optimizer is. Scheduling addresses that directly.</li>
+  </ol>
+
+  <h3>The optimizers side by side</h3>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th scope="col">Optimizer</th><th scope="col">What it fixes</th><th scope="col">Trade-off or caveat</th><th scope="col">Lecture result (50 epochs)</th></tr></thead>
+      <tbody>
+        <tr><th scope="row">Plain SGD</th><td>Baseline: one fixed step size for every parameter and every step.</td><td>Zigzags on a steep, narrow valley; ignores how consistent recent gradients have been.</td><td>Final loss 0.3633 (lr 0.05)</td></tr>
+        <tr><th scope="row">Momentum</th><td>Smooths the direction of updates: consistent directions build speed, noisy ones cancel.</td><td>Can swing wide past a minimum, with fewer but larger oscillations.</td><td>Final loss 0.0526, noise 0.0482</td></tr>
+        <tr><th scope="row">RMSprop</th><td>Per-parameter step size, from a running average of squared gradients.</td><td>Dividing by a small running average can amplify noise.</td><td>Final loss 0.1019, noise 0.0855</td></tr>
+        <tr><th scope="row">Adam</th><td>Both averages, with bias correction so early steps aren't understated.</td><td>Still needs an overall learning-rate schedule near a minimum.</td><td>Final loss 0.0430, noise 0.0285</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p style="font-size:.88rem;color:var(--muted);margin-top:8px">Plain SGD used lr 0.05; momentum 0.9 at the same lr; RMSprop lr 0.01, alpha 0.9; Adam lr 0.005. Noise is the standard deviation of the loss over the last 20 epochs; the lecture did not report it for plain SGD.</p>
+
+  <h3>Rapid-fire</h3>
+  <p>Answer each question in your head, then reveal.</p>
+  <div class="rf" id="rf"></div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <strong>Neural Network 6 post read</strong>
+    <span>Weight initialization and optimizers in PyTorch &middot; <a href="#top">Back to top</a></span>
+  </div>
+</footer>
+
+<script>
+(function(){
+'use strict';
+var $=function(s,r){return (r||document).querySelector(s)};
+var $$=function(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s))};
+var NS='http://www.w3.org/2000/svg';
+
+/* ---------- utilities ---------- */
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function randn(r){var u=0;while(u===0)u=r();var v=r();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v)}
+function watch(el,fn){
+  var last=-1,t;
+  function run(){var w=Math.round(el.clientWidth);if(w!==last){last=w;fn()}}
+  fn();last=Math.round(el.clientWidth);
+  if(window.ResizeObserver){new ResizeObserver(function(){clearTimeout(t);t=setTimeout(run,80)}).observe(el)}
+  else window.addEventListener('resize',function(){clearTimeout(t);t=setTimeout(run,80)});
+}
+function niceTicks(min,max,n){
+  var span=(max-min)||1,raw=span/n,p=Math.pow(10,Math.floor(Math.log10(raw))),f=raw/p;
+  var s=(f<=1?1:f<=2?2:f<=5?5:10)*p,t=[];
+  for(var v=Math.ceil(min/s-1e-9)*s;v<=max+s*1e-6;v+=s)t.push(+v.toFixed(10));
+  return t;
+}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function marker(shape,x,y,r,fill,stroke,title){
+  var t=title?'<title>'+esc(title)+'</title>':'';
+  var st='fill:'+fill+';stroke:'+stroke+';stroke-width:1.5';
+  if(shape==='square')return '<rect x="'+(x-r)+'" y="'+(y-r)+'" width="'+(2*r)+'" height="'+(2*r)+'" style="'+st+'">'+t+'</rect>';
+  if(shape==='triangle')return '<path d="M'+x+','+(y-r*1.25)+'L'+(x+r*1.15)+','+(y+r*.9)+'L'+(x-r*1.15)+','+(y+r*.9)+'Z" style="'+st+'">'+t+'</path>';
+  if(shape==='diamond')return '<path d="M'+x+','+(y-r*1.3)+'L'+(x+r*1.3)+','+y+'L'+x+','+(y+r*1.3)+'L'+(x-r*1.3)+','+y+'Z" style="'+st+'">'+t+'</path>';
+  return '<circle cx="'+x+'" cy="'+y+'" r="'+r+'" style="'+st+'">'+t+'</circle>';
+}
+function legendHTML(series){
+  return '<ul class="legend">'+series.map(function(s){
+    var sh=s.shape||'circle';
+    var line='<line x1="0" y1="7" x2="30" y2="7" style="stroke:'+s.stroke+';stroke-width:'+(s.width||2.5)+';'+(s.dash?'stroke-dasharray:'+s.dash:'')+'"/>';
+    var mk=s.noMarker?'':marker(sh,15,7,4,s.fill||s.stroke,s.mstroke||s.stroke);
+    return '<li><svg width="30" height="14" viewBox="0 0 30 14" aria-hidden="true">'+line+mk+'</svg>'+esc(s.name)+'</li>';
+  }).join('')+'</ul>';
+}
+
+/* generic line chart. cfg: series[{name,pts,stroke,dash,width,shape,fill,mstroke,noMarker,noLine,markEvery}], xmin,xmax,ymin,ymax,log,xticks,xlab,ylab,h,legend */
+function lineChart(el,cfg,noLegend){
+  var W=Math.max(300,Math.floor(el.clientWidth||600)),H=cfg.h||300;
+  var m={l:cfg.log?58:52,r:18,t:14,b:cfg.xlab?52:34};
+  var iw=W-m.l-m.r,ih=H-m.t-m.b;
+  var sy=cfg.log?Math.log10:function(v){return v};
+  var y0=sy(cfg.ymin),y1=sy(cfg.ymax);
+  function X(v){return m.l+(v-cfg.xmin)/(cfg.xmax-cfg.xmin)*iw}
+  function Y(v){var c=cfg.log?Math.max(v,cfg.ymin):v;return m.t+(1-(sy(c)-y0)/(y1-y0))*ih}
+  var g='',yt=[],k;
+  if(cfg.log){for(k=Math.ceil(y0-1e-9);k<=Math.floor(y1+1e-9);k+=(cfg.logStep||1))yt.push(Math.pow(10,k))}
+  else yt=niceTicks(cfg.ymin,cfg.ymax,5);
+  yt.forEach(function(v){
+    var y=Y(v),lab=cfg.log?(Math.log10(v)>=0&&Math.log10(v)<=3?String(Math.round(v)):'1e'+Math.round(Math.log10(v))):(cfg.fmtY?cfg.fmtY(v):String(v));
+    g+='<line class="grid" x1="'+m.l+'" x2="'+(W-m.r)+'" y1="'+y+'" y2="'+y+'"/><text x="'+(m.l-8)+'" y="'+(y+4)+'" text-anchor="end">'+lab+'</text>';
+  });
+  var xt=cfg.xticks||niceTicks(cfg.xmin,cfg.xmax,8);
+  xt.forEach(function(v){var x=X(v);g+='<line class="grid" x1="'+x+'" x2="'+x+'" y1="'+m.t+'" y2="'+(H-m.b)+'" style="opacity:.5"/><text x="'+x+'" y="'+(H-m.b+18)+'" text-anchor="middle">'+v+'</text>'});
+  g+='<line class="axis" x1="'+m.l+'" x2="'+(W-m.r)+'" y1="'+(H-m.b)+'" y2="'+(H-m.b)+'"/><line class="axis" x1="'+m.l+'" x2="'+m.l+'" y1="'+m.t+'" y2="'+(H-m.b)+'"/>';
+  if(cfg.xlab)g+='<text x="'+(m.l+iw/2)+'" y="'+(H-8)+'" text-anchor="middle" style="font-weight:700">'+esc(cfg.xlab)+'</text>';
+  if(cfg.ylab)g+='<text transform="translate(14,'+(m.t+ih/2)+') rotate(-90)" text-anchor="middle" style="font-weight:700">'+esc(cfg.ylab)+'</text>';
+  cfg.series.forEach(function(s){
+    if(!s.pts.length)return;
+    if(!s.noLine){
+      var d=s.pts.map(function(p,i){return(i?'L':'M')+X(p[0]).toFixed(1)+','+Y(p[1]).toFixed(1)}).join('');
+      g+='<path d="'+d+'" style="fill:none;stroke:'+s.stroke+';stroke-width:'+(s.width||2.5)+';stroke-linejoin:round;stroke-linecap:round;'+(s.dash?'stroke-dasharray:'+s.dash:'')+'"/>';
+    }
+    var every=s.markEvery||(s.pts.length>16?Math.ceil(s.pts.length/10):1);
+    if(!s.noMarker)s.pts.forEach(function(p,i){
+      if(i%every===0||i===s.pts.length-1)g+=marker(s.shape||'circle',X(p[0]),Y(p[1]),4,s.fill||s.stroke,s.mstroke||s.stroke,s.name+': '+(cfg.fmtX?cfg.fmtX(p[0]):p[0])+', '+(cfg.fmtT?cfg.fmtT(p[1]):(+p[1].toPrecision(4))));
+    });
+  });
+  (cfg.notes||[]).forEach(function(n){g+=n(X,Y,m,W,H)});
+  el.innerHTML='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+esc(cfg.label||'Line chart')+'">'+g+'</svg>'+(noLegend||cfg.noLegend?'':legendHTML(cfg.series));
+}
+
+/* bar chart. cfg: groups[{label,bars[{v,fill,stroke,name}]}], series[{name,fill,stroke}], fmt, ymax */
+function barChart(el,cfg){
+  var W=Math.max(300,Math.floor(el.clientWidth||600)),H=cfg.h||280;
+  var m={l:48,r:12,t:26,b:42},iw=W-m.l-m.r,ih=H-m.t-m.b;
+  var ymax=cfg.ymax,ticks=niceTicks(0,ymax,4),g='';
+  function Y(v){return m.t+(1-v/ymax)*ih}
+  ticks.forEach(function(v){g+='<line class="grid" x1="'+m.l+'" x2="'+(W-m.r)+'" y1="'+Y(v)+'" y2="'+Y(v)+'"/><text x="'+(m.l-8)+'" y="'+(Y(v)+4)+'" text-anchor="end">'+v+'</text>'});
+  g+='<line class="axis" x1="'+m.l+'" x2="'+(W-m.r)+'" y1="'+Y(0)+'" y2="'+Y(0)+'"/>';
+  var gw=iw/cfg.groups.length;
+  cfg.groups.forEach(function(gr,gi){
+    var n=gr.bars.length,bw=Math.min(70,gw*0.72/n),gap=6,tot=n*bw+(n-1)*gap,x0=m.l+gi*gw+(gw-tot)/2;
+    gr.bars.forEach(function(b,bi){
+      var x=x0+bi*(bw+gap),y=Y(b.v);
+      g+='<rect x="'+x+'" y="'+y+'" width="'+bw+'" height="'+Math.max(0,Y(0)-y)+'" rx="4" style="fill:'+b.fill+';stroke:'+(b.stroke||'var(--navy-900)')+';stroke-width:1.5"><title>'+esc(gr.label+(b.name?' ('+b.name+')':'')+': '+cfg.fmt(b.v))+'</title></rect>';
+      g+='<text class="vl" x="'+(x+bw/2)+'" y="'+(y-6)+'" text-anchor="middle">'+cfg.fmt(b.v)+'</text>';
+    });
+    g+='<text x="'+(m.l+gi*gw+gw/2)+'" y="'+(H-m.b+22)+'" text-anchor="middle" style="font-weight:700;font-size:13px">'+esc(gr.label)+'</text>';
+  });
+  var leg='';
+  if(cfg.series)leg='<ul class="legend">'+cfg.series.map(function(s){return '<li><svg width="18" height="12" aria-hidden="true"><rect x="1" y="1" width="16" height="10" rx="2" style="fill:'+s.fill+';stroke:var(--navy-900);stroke-width:1.5"/></svg>'+esc(s.name)+'</li>'}).join('')+'</ul>';
+  el.innerHTML='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+esc(cfg.label||'Bar chart')+'">'+g+'</svg>'+leg;
+}
+
+/* aria-pressed toggle helper */
+function toggleGroup(btns,onPick){
+  btns.forEach(function(b,i){b.addEventListener('click',function(){btns.forEach(function(x){x.setAttribute('aria-pressed',x===b?'true':'false')});onPick(i)})});
+}
+
+/* ---------- top bar: progress + scrollspy ---------- */
+var prog=$('#progress');
+function onScroll(){var h=document.documentElement,max=h.scrollHeight-h.clientHeight;prog.style.width=(max>0?h.scrollTop/max*100:0)+'%'}
+window.addEventListener('scroll',onScroll,{passive:true});onScroll();
+var links=$$('.nav a'),secs=links.map(function(a){return $(a.getAttribute('href'))});
+function spy(){
+  var y=window.scrollY+120,cur=0;
+  secs.forEach(function(s,i){if(s&&s.offsetTop<=y)cur=i});
+  links.forEach(function(a,i){if(i===cur){a.classList.add('on');a.setAttribute('aria-current','true');var n=a.parentNode;if(n.scrollWidth>n.clientWidth){n.scrollLeft=a.offsetLeft-n.clientWidth/2+a.clientWidth/2}}else{a.classList.remove('on');a.removeAttribute('aria-current')}});
+}
+window.addEventListener('scroll',spy,{passive:true});spy();
+
+/* ---------- code highlight ---------- */
+$$('pre code[data-lang="py"]').forEach(function(c){
+  var src=esc(c.textContent);
+  var re=/(#[^\n]*)|("(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*')|\b(def|return|for|in|if|elif|else|import|from|as|lambda|with|True|False|None|is|not)\b|\b(\d+\.?\d*)\b/g;
+  c.innerHTML=src.replace(re,function(m,cm,st,kw,nu){
+    if(cm)return '<span class="c">'+cm+'</span>';
+    if(st)return '<span class="s">'+st+'</span>';
+    if(kw)return '<span class="k">'+kw+'</span>';
+    return '<span class="n">'+nu+'</span>';
+  });
+});
+
+/* ---------- hook reveal ---------- */
+(function(){
+  var b=$('#hookBtn'),a=$('#hookAns');
+  b.addEventListener('click',function(){var open=a.hidden;a.hidden=!open;b.setAttribute('aria-expanded',String(open));b.textContent=open?'Hide the answer':'Commit to a guess, then see what happens'});
+})();
+
+/* ---------- class balance bars ---------- */
+(function(){
+  var cb=$('#classBars'),d=[148,143,149],max=149,h='';
+  d.forEach(function(v,i){h+='<div style="display:grid;grid-template-columns:70px 1fr 40px;gap:10px;align-items:center;margin:8px 0"><span style="font-weight:700;font-size:.9rem">Class '+i+'</span><div style="background:var(--royal-100);border-radius:6px;height:22px;overflow:hidden"><div style="width:'+(v/max*100)+'%;height:100%;background:'+(i===1?'var(--gold-500)':'var(--royal-600)')+';border-right:2px solid var(--navy-900)"></div></div><b>'+v+'</b></div>'});
+  cb.innerHTML=h;
+})();
+
+/* ---------- heatmap ---------- */
+(function(){
+  var rows=8,cols=7,rng=mulberry32(11),R=[];
+  for(var r=0;r<rows;r++){var row=[];for(var c=0;c<cols;c++)row.push(Math.max(-1,Math.min(1,randn(rng)*0.45)));R.push(row)}
+  var hm=$('#hm'),mode='zero';
+  function draw(){
+    var h='<div class="h"></div>';
+    for(var c=0;c<cols;c++)h+='<div class="h">w'+(c+1)+'</div>';
+    for(var r=0;r<rows;r++){
+      h+='<div class="rl">n'+(r+1)+'</div>';
+      for(var c2=0;c2<cols;c2++){
+        if(mode==='zero')h+='<div style="background:var(--royal-100);color:var(--navy-900)">0.00</div>';
+        else{
+          var v=R[r][c2],a=Math.min(1,Math.abs(v)),txt=(v<0?'−':'+')+Math.abs(v).toFixed(2);
+          var bg=v<0?'rgba(31,70,200,'+(0.15+0.8*a).toFixed(2)+')':'rgba(255,194,26,'+(0.25+0.75*a).toFixed(2)+')';
+          var fg=(v<0&&a>0.45)?'#fff':'var(--navy-900)';
+          h+='<div style="background:'+bg+';color:'+fg+'">'+txt+'</div>';
+        }
+      }
+    }
+    hm.innerHTML=h;
+    if(mode==='zero'){
+      $('#hmDiff').textContent='0.0';$('#hmVerd').textContent='One neuron, copied';
+      $('#hmVerdT').textContent='Every neuron computes, and is updated, identically.';
+    }else{
+      var mx=0;for(var i=1;i<rows;i++)for(var j=0;j<cols;j++)mx=Math.max(mx,Math.abs(R[i][j]-R[0][j]));
+      $('#hmDiff').textContent=mx.toFixed(2);$('#hmVerd').textContent='Distinct neurons';
+      $('#hmVerdT').textContent='Different weights, so different outputs and different gradients. Symmetry is broken.';
+    }
+  }
+  toggleGroup([$('#hmZero'),$('#hmRand')],function(i){mode=i?'rand':'zero';draw()});
+  draw();
+})();
+
+/* ---------- loop stepper ---------- */
+(function(){
+  var steps=[
+    ['Step 1','Identical weights in','Every neuron in the layer starts with exactly the same weights (all zero).'],
+    ['Step 2','Identical outputs','Each neuron computes the exact same output from the same input.'],
+    ['Step 3','Identical gradients','So each neuron receives the exact same gradient during backpropagation.'],
+    ['Step 4','Identical updates','Each takes the exact same update step, so the weights are still identical. The loop repeats, and that never changes however many epochs run.']
+  ],cur=0,ol=$('#loop');
+  function draw(){
+    ol.innerHTML=steps.map(function(s,i){return '<li><button type="button" data-i="'+i+'"'+(i===cur?' aria-current="step"':'')+'><b>'+s[0]+'</b><span>'+s[1]+'</span></button></li>'}).join('');
+    $('#loopText').textContent=steps[cur][2];
+    $$('button',ol).forEach(function(b){b.addEventListener('click',function(){cur=+b.getAttribute('data-i');draw();$('button[aria-current]',ol).focus()})});
+  }
+  $('#loopNext').addEventListener('click',function(){cur=(cur+1)%4;draw()});
+  $('#loopPrev').addEventListener('click',function(){cur=(cur+3)%4;draw()});
+  draw();
+})();
+
+/* ---------- init scale simulator ---------- */
+(function(){
+  var L=10,Wd=100,B=64,base=[];
+  function roll(seed){
+    var rng=mulberry32(seed),x=new Float64Array(B*Wd),i,j,k,b;
+    for(i=0;i<x.length;i++)x[i]=randn(rng);
+    base=[];var cur=x;
+    for(var l=0;l<L;l++){
+      var w=new Float64Array(Wd*Wd);for(i=0;i<w.length;i++)w[i]=randn(rng);
+      var out=new Float64Array(B*Wd);
+      for(b=0;b<B;b++)for(j=0;j<Wd;j++){var s=0;for(k=0;k<Wd;k++)s+=cur[b*Wd+k]*w[j*Wd+k];out[b*Wd+j]=s>0?s:0}
+      var mean=0;for(i=0;i<out.length;i++)mean+=out[i];mean/=out.length;
+      var v=0;for(i=0;i<out.length;i++)v+=(out[i]-mean)*(out[i]-mean);
+      base.push(Math.sqrt(v/(out.length-1)));
+      cur=out;
+    }
+  }
+  var seed=42;roll(seed);
+  function series(std){var p=[];for(var l=0;l<L;l++)p.push([l+1,Math.pow(std,l+1)*base[l]]);return p}
+  var chart=$('#isChart');
+  function draw(){
+    var t=+$('#isStd').value,std=Math.pow(10,t);
+    $('#isOut').textContent=std.toFixed(3);
+    var he=Math.sqrt(2/100);
+    lineChart(chart,{
+      xmin:1,xmax:10,xticks:[1,2,3,4,5,6,7,8,9,10],ymin:1e-12,ymax:1e8,log:true,logStep:2,h:330,xlab:'Layer',ylab:'Activation std (log scale)',
+      label:'Activation standard deviation across 10 layers for four weight scales on a logarithmic axis',
+      fmtT:function(v){return v.toExponential(2)},
+      series:[
+        {name:'Too large (std 0.5)',pts:series(0.5),stroke:'var(--gold-600)',fill:'var(--gold-500)',mstroke:'var(--navy-900)',shape:'triangle'},
+        {name:'He-scaled (std 0.141)',pts:series(he),stroke:'var(--navy-900)',fill:'var(--navy-900)',shape:'square'},
+        {name:'Too small (std 0.01)',pts:series(0.01),stroke:'var(--royal-500)',fill:'#fff',mstroke:'var(--royal-500)',dash:'7 5',shape:'circle'},
+        {name:'Your std ('+std.toFixed(3)+')',pts:series(std),stroke:'var(--royal-600)',width:4,fill:'var(--royal-100)',mstroke:'var(--navy-900)',shape:'diamond',dash:'2 4'}
+      ]
+    });
+    var s=series(std),mult=Math.pow(s[L-1][1]/s[0][1],1/(L-1));
+    $('#isMult').textContent='×'+(mult>=100||mult<0.01?mult.toExponential(1):mult.toFixed(2));
+    var v,tx;
+    if(mult>1.2){v='Growing';tx='Activations are heading toward exploding as layers stack up.'}
+    else if(mult<0.83){v='Shrinking';tx='Activations are heading toward vanishing as layers stack up.'}
+    else{v='About stable';tx='Signal size holds roughly steady across the layers. The He-scaled std, 0.141, sits here.'}
+    $('#isVerd').textContent=v;$('#isVerdT').textContent=tx;
+  }
+  $('#isStd').addEventListener('input',draw);
+  $('#isRoll').addEventListener('click',function(){seed+=1;roll(seed);draw()});
+  watch(chart,draw);
+})();
+
+/* ---------- init chooser ---------- */
+(function(){
+  var data=[
+    ['Use He (Kaiming) initialization','ReLU zeroes out half its input range, so it needs a larger spread to keep variance stable. In PyTorch: nn.init.kaiming_uniform_(layer.weight, nonlinearity=\'relu\'). In the lecture, He reached a loss of 0.4458 against Xavier\'s 0.7770 on the ReLU network.'],
+    ['Use Xavier (Glorot) initialization','Xavier sizes the random spread to keep variance stable assuming a symmetric activation like tanh. In PyTorch: nn.init.xavier_uniform_(layer.weight).']
+  ];
+  function show(i){$('#actLab').textContent=data[i][0];$('#actTxt').textContent=data[i][1]}
+  toggleGroup([$('#actRelu'),$('#actTanh')],show);show(0);
+})();
+
+/* ---------- static bar charts ---------- */
+var C1='var(--royal-600)',C2='var(--gold-500)',C3='var(--navy-900)';
+watch($('#xhChart'),function(){
+  barChart($('#xhChart'),{ymax:2,fmt:function(v){return v.toFixed(4)},h:290,
+    label:'Xavier: loss 1.1196 at the first epoch and 0.7770 at the last. He: 1.7421 and 0.4458.',
+    series:[{name:'Loss at epoch 1',fill:C1},{name:'Loss at epoch 100',fill:C2}],
+    groups:[{label:'Xavier',bars:[{v:1.1196,fill:C1,name:'epoch 1'},{v:0.7770,fill:C2,name:'epoch 100'}]},{label:'He',bars:[{v:1.7421,fill:C1,name:'epoch 1'},{v:0.4458,fill:C2,name:'epoch 100'}]}]});
+});
+watch($('#momChart'),function(){
+  barChart($('#momChart'),{ymax:0.4,fmt:function(v){return v.toFixed(4)},h:260,
+    label:'Final loss: plain SGD 0.3633, SGD with momentum 0.0526.',
+    groups:[{label:'Plain SGD',bars:[{v:0.3633,fill:C1}]},{label:'SGD + momentum (0.9)',bars:[{v:0.0526,fill:C2}]}]});
+});
+function metricChart(id,groups,keyBtns,ymaxLoss,ymaxNoise){
+  var el=$(id),mode=0;
+  function draw(){
+    var isL=mode===0;
+    barChart(el,{ymax:isL?ymaxLoss:ymaxNoise,fmt:function(v){return v.toFixed(4)},h:270,
+      label:(isL?'Final loss':'Noise in last 20 epochs')+': '+groups.map(function(g){return g.n+' '+(isL?g.l:g.s)}).join(', '),
+      groups:groups.map(function(g){var best=isL?g.l===Math.min.apply(null,groups.map(function(q){return q.l})):g.s===Math.min.apply(null,groups.map(function(q){return q.s}));
+        return {label:g.n,bars:[{v:isL?g.l:g.s,fill:best?C2:C1}]}})});
+    var lowest=groups.reduce(function(a,g){return (isL?g.l<a.l:g.s<a.s)?g:a},groups[0]);
+    el.insertAdjacentHTML('beforeend','<p style="margin:8px 0 0;font-size:.88rem;color:var(--muted)">Gold bar = lowest value ('+lowest.n+'). Lower is better.</p>');
+  }
+  toggleGroup(keyBtns,function(i){mode=i;draw()});
+  watch(el,draw);
+}
+metricChart('#rmChart',[{n:'Momentum',l:0.0526,s:0.0482},{n:'RMSprop',l:0.1019,s:0.0855}],[$('#rmLoss'),$('#rmNoise')],0.12,0.1);
+metricChart('#adChart',[{n:'Momentum',l:0.0526,s:0.0482},{n:'RMSprop',l:0.1019,s:0.0855},{n:'Adam',l:0.0430,s:0.0285}],[$('#adLoss'),$('#adNoise')],0.12,0.1);
+
+/* ---------- momentum running-average chart ---------- */
+(function(){
+  var N=40,rng=mulberry32(7),noise=[],i;
+  for(i=0;i<N;i++)noise.push(rng()*2-1);
+  var mode=0,el=$('#emaChart');
+  function grads(){var g=[];for(var t=0;t<N;t++)g.push(mode===0?0.6+0.9*noise[t]:((t%2===0)?1:-1)*1.0+0.3*noise[t]);return g}
+  function draw(){
+    var b=+$('#emaB').value,g=grads(),v=0,vp=[],gp=[];
+    $('#emaOut').textContent=b.toFixed(2);
+    $('#emaMem').textContent=Math.round(b*100)+'%';$('#emaNew').textContent=Math.round((1-b)*100)+'%';
+    for(var t=0;t<N;t++){v=b*v+(1-b)*g[t];vp.push([t+1,v]);gp.push([t+1,g[t]])}
+    var ref=mode===0?0.6:0;
+    lineChart(el,{xmin:1,xmax:N,xticks:[1,5,10,15,20,25,30,35,40],ymin:-2,ymax:2,h:290,xlab:'Step',ylab:'Gradient / velocity',
+      label:'Noisy gradients and their running average, the velocity, over 40 steps',
+      fmtT:function(v){return v.toFixed(2)},
+      series:[
+        {name:'Fresh gradient (noisy)',pts:gp,stroke:'var(--royal-300)',width:1.5,fill:'#fff',mstroke:'var(--royal-600)',shape:'circle',markEvery:1},
+        {name:'Velocity (running average)',pts:vp,stroke:'var(--royal-600)',width:4,fill:'var(--royal-600)',shape:'square',markEvery:5},
+        {name:mode===0?'True average direction (0.6)':'Average direction (0)',pts:[[1,ref],[N,ref]],stroke:'var(--gold-600)',width:3,dash:'8 6',noMarker:true}
+      ]});
+  }
+  toggleGroup([$('#emaConsistent'),$('#emaFlip')],function(i){mode=i;draw()});
+  $('#emaB').addEventListener('input',draw);
+  watch(el,draw);
+})();
+
+/* ---------- RMSprop scaler ---------- */
+(function(){
+  var el=$('#rsChart');
+  function draw(){
+    var a=+$('#rsSteep').value,b=+$('#rsShallow').value;
+    $('#rsA').textContent=a.toFixed(1);$('#rsB').textContent=b.toFixed(2);
+    barChart(el,{ymax:Math.max(1.5,Math.ceil(a*1.15)),fmt:function(v){return v.toFixed(2)},h:290,
+      label:'Raw step sizes '+a.toFixed(1)+' and '+b.toFixed(2)+' become 1.00 and 1.00 after RMSprop scaling.',
+      series:[{name:'Raw SGD step (proportional to gradient)',fill:C1},{name:'RMSprop-scaled step',fill:C2}],
+      groups:[{label:'Steep parameter',bars:[{v:a,fill:C1,name:'raw'},{v:1,fill:C2,name:'scaled'}]},{label:'Shallow parameter',bars:[{v:b,fill:C1,name:'raw'},{v:1,fill:C2,name:'scaled'}]}]});
+    el.insertAdjacentHTML('beforeend','<p style="margin:10px 0 0;font-weight:700">Raw step ratio steep : shallow = '+(a/b).toFixed(1)+' : 1 &nbsp;&rarr;&nbsp; after scaling = 1 : 1</p>');
+  }
+  $('#rsSteep').addEventListener('input',draw);$('#rsShallow').addEventListener('input',draw);
+  watch(el,draw);
+})();
+
+/* ---------- Adam bias correction ---------- */
+(function(){
+  var el=$('#bcChart'),T=30;
+  function draw(){
+    var b=+$('#bcB').value;$('#bcOut').textContent=b.toFixed(3).replace(/0$/,'');
+    var raw=[],cor=[];
+    for(var t=1;t<=T;t++){raw.push([t,1-Math.pow(b,t)]);cor.push([t,1])}
+    lineChart(el,{xmin:1,xmax:T,xticks:[1,5,10,15,20,25,30],ymin:0,ymax:1.2,h:280,xlab:'Step',ylab:'Reported average',
+      label:'Running average of a constant gradient of 1, before and after bias correction',
+      fmtT:function(v){return v.toFixed(3)},
+      series:[
+        {name:'Running average, starts at zero',pts:raw,stroke:'var(--royal-600)',width:3.5,fill:'var(--royal-600)',shape:'circle',markEvery:3},
+        {name:'After bias correction (true gradient)',pts:cor,stroke:'var(--gold-600)',width:3,dash:'8 6',noMarker:true}
+      ]});
+    var r=$('#bcRead');r.innerHTML='';
+    [1,5,10,30].forEach(function(t,i){
+      var f=1/(1-Math.pow(b,t));
+      r.insertAdjacentHTML('beforeend','<div class="stat'+(i===0?' gold':'')+'"><b>&times;'+(f>=100?f.toFixed(0):f.toFixed(2))+'</b><span>correction factor at step '+t+'</span></div>');
+    });
+  }
+  $('#bcB').addEventListener('input',draw);
+  $('#bc9').addEventListener('click',function(){$('#bcB').value=0.9;draw()});
+  $('#bc999').addEventListener('click',function(){$('#bcB').value=0.999;draw()});
+  watch(el,draw);
+})();
+
+/* ---------- optimizer race ---------- */
+(function(){
+  var STEPS=60;
+  var OPT=[
+    {k:'sgd',name:'Plain SGD',color:'#FFFFFF',dash:[2,5],shape:'circle',css:'2 5'},
+    {k:'mom',name:'Momentum',color:'#6C8FFF',dash:[9,5],shape:'square',css:'9 5'},
+    {k:'rms',name:'RMSprop',color:'#B5C4F2',dash:[10,4,2,4],shape:'triangle',css:'10 4 2 4'},
+    {k:'adam',name:'Adam',color:'#FFC21A',dash:[],shape:'diamond',css:''}
+  ];
+  function run(kind){
+    var x=-8,y=4,p=[[x,y]],vx=0,vy=0,sx=0,sy=0,mx=0,my=0,t=0;
+    for(var i=0;i<STEPS;i++){
+      var gx=0.2*x,gy=4*y;t++;
+      if(kind==='sgd'){x-=0.4*gx;y-=0.4*gy}
+      else if(kind==='mom'){vx=0.9*vx+gx;vy=0.9*vy+gy;x-=0.1*vx;y-=0.1*vy}
+      else if(kind==='rms'){var a=0.99;sx=a*sx+(1-a)*gx*gx;sy=a*sy+(1-a)*gy*gy;x-=0.1*gx/(Math.sqrt(sx)+1e-8);y-=0.1*gy/(Math.sqrt(sy)+1e-8)}
+      else{var b1=0.9,b2=0.999;mx=b1*mx+(1-b1)*gx;my=b1*my+(1-b1)*gy;sx=b2*sx+(1-b2)*gx*gx;sy=b2*sy+(1-b2)*gy*gy;
+        var c1=1-Math.pow(b1,t),c2=1-Math.pow(b2,t);x-=0.3*(mx/c1)/(Math.sqrt(sx/c2)+1e-8);y-=0.3*(my/c1)/(Math.sqrt(sy/c2)+1e-8)}
+      p.push([x,y]);
+    }
+    return p;
+  }
+  OPT.forEach(function(o){o.path=run(o.k);o.on=true});
+  function lossAt(q){return 0.1*q[0]*q[0]+2*q[1]*q[1]}
+  var step=0,playing=false,timer=null;
+  var cv=$('#raceCv'),ctx=cv.getContext('2d');
+  var X0=-9,X1=2,Y0=-5,Y1=5;
+  function size(){
+    var dpr=window.devicePixelRatio||1,w=Math.max(260,cv.parentNode.clientWidth),h=Math.round(w*10/11);
+    cv.style.height=h+'px';cv.width=Math.round(w*dpr);cv.height=Math.round(h*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);return [w,h];
+  }
+  function shapePath(c,shape,x,y,r){
+    c.beginPath();
+    if(shape==='square')c.rect(x-r,y-r,2*r,2*r);
+    else if(shape==='triangle'){c.moveTo(x,y-r*1.25);c.lineTo(x+r*1.15,y+r*.9);c.lineTo(x-r*1.15,y+r*.9);c.closePath()}
+    else if(shape==='diamond'){c.moveTo(x,y-r*1.3);c.lineTo(x+r*1.3,y);c.lineTo(x,y+r*1.3);c.lineTo(x-r*1.3,y);c.closePath()}
+    else c.arc(x,y,r,0,Math.PI*2);
+  }
+  function draw(){
+    var s=size(),w=s[0],h=s[1],pad=26;
+    function PX(x){return pad+(x-X0)/(X1-X0)*(w-2*pad)}
+    function PY(y){return pad+(Y1-y)/(Y1-Y0)*(h-2*pad)}
+    ctx.clearRect(0,0,w,h);
+    ctx.fillStyle='#060F30';ctx.fillRect(0,0,w,h);
+    // axes
+    ctx.strokeStyle='rgba(255,255,255,.25)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(PX(X0),PY(0));ctx.lineTo(PX(X1),PY(0));ctx.moveTo(PX(0),PY(Y0));ctx.lineTo(PX(0),PY(Y1));ctx.stroke();
+    ctx.fillStyle='#B9C6EE';ctx.font='12px sans-serif';ctx.textAlign='center';
+    [-8,-6,-4,-2,0].forEach(function(v){ctx.fillText(v,PX(v),PY(0)+16)});
+    ctx.textAlign='right';[-4,-2,2,4].forEach(function(v){ctx.fillText(v,PX(0)-6,PY(v)+4)});
+    ctx.textAlign='left';ctx.fillText('x (shallow)',PX(X0)+2,h-6);ctx.fillText('y (steep)',PX(0)+8,pad-8);
+    // contours
+    ctx.strokeStyle='rgba(157,180,245,.35)';ctx.lineWidth=1;
+    for(var i=1;i<=11;i++){var L=0.4*i*i,rx=Math.sqrt(L/0.1)*(w-2*pad)/(X1-X0),ry=Math.sqrt(L/2)*(h-2*pad)/(Y1-Y0);
+      ctx.beginPath();ctx.ellipse(PX(0),PY(0),rx,ry,0,0,Math.PI*2);ctx.stroke()}
+    // minimum
+    ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.beginPath();ctx.arc(PX(0),PY(0),7,0,Math.PI*2);ctx.moveTo(PX(0)-11,PY(0));ctx.lineTo(PX(0)+11,PY(0));ctx.moveTo(PX(0),PY(0)-11);ctx.lineTo(PX(0),PY(0)+11);ctx.stroke();
+    ctx.fillStyle='#fff';ctx.textAlign='left';ctx.fillText('minimum',PX(0)+12,PY(0)-10);
+    // paths
+    OPT.forEach(function(o){
+      if(!o.on)return;
+      var p=o.path;
+      ctx.strokeStyle=o.color;ctx.lineWidth=o.k==='adam'?3:2;ctx.setLineDash(o.dash);ctx.lineJoin='round';
+      ctx.beginPath();for(var j=0;j<=step;j++){var q=p[j];j?ctx.lineTo(PX(q[0]),PY(q[1])):ctx.moveTo(PX(q[0]),PY(q[1]))}ctx.stroke();ctx.setLineDash([]);
+      ctx.fillStyle=o.color;
+      for(var j2=0;j2<=step;j2++){var q2=p[j2];ctx.beginPath();ctx.arc(PX(q2[0]),PY(q2[1]),2,0,Math.PI*2);ctx.fill()}
+      var hq=p[step];ctx.fillStyle=o.color;ctx.strokeStyle='#060F30';ctx.lineWidth=2;shapePath(ctx,o.shape,PX(hq[0]),PY(hq[1]),7);ctx.fill();ctx.stroke();
+    });
+    // start marker label
+    ctx.fillStyle='#fff';ctx.textAlign='left';ctx.fillText('start',PX(-8)+8,PY(4)-6);
+  }
+  function table(){
+    var h='';
+    OPT.forEach(function(o){
+      var q=o.path[step],flips=0;
+      for(var i=2;i<=step;i++){if(o.path[i][1]!==0&&Math.sign(o.path[i][1])!==Math.sign(o.path[i-1][1]))flips++}
+      var sv='<svg width="34" height="14" viewBox="0 0 34 14" aria-hidden="true"><line x1="0" y1="7" x2="34" y2="7" style="stroke:'+o.color+';stroke-width:2.5;'+(o.css?'stroke-dasharray:'+o.css:'')+'"/>'+marker(o.shape,17,7,4,o.color,'#060F30')+'</svg>';
+      h+='<tr style="'+(o.on?'':'opacity:.4')+'"><th scope="row" style="background:none;color:#fff;border-color:rgba(255,255,255,.12);padding:8px">'+sv+' '+o.name+'</th><td style="border-color:rgba(255,255,255,.12);padding:8px;white-space:nowrap">('+q[0].toFixed(2)+', '+q[1].toFixed(2)+')</td><td style="border-color:rgba(255,255,255,.12);padding:8px">'+lossAt(q).toPrecision(3)+'</td><td style="border-color:rgba(255,255,255,.12);padding:8px">'+flips+'</td></tr>';
+    });
+    $('#raceTbl').innerHTML=h;
+  }
+  var lossEl=$('#raceLoss');
+  function lossChart(){
+    lineChart(lossEl,{xmin:0,xmax:STEPS,xticks:[0,10,20,30,40,50,60],ymin:1e-6,ymax:100,log:true,logStep:2,h:260,xlab:'Step',ylab:'Loss (log scale)',
+      label:'Loss at each step for the optimizers shown, on a logarithmic axis',fmtT:function(v){return v.toExponential(2)},
+      series:OPT.filter(function(o){return o.on}).map(function(o){
+        return {name:o.name,pts:o.path.slice(0,step+1).map(function(q,i){return [i,lossAt(q)]}),stroke:o.color,dash:o.css,width:o.k==='adam'?3:2,fill:o.color,mstroke:'#060F30',shape:o.shape,markEvery:6};
+      })},true);
+    $('#raceLegend').innerHTML=legendHTML(OPT.filter(function(o){return o.on}).map(function(o){return {name:o.name+' ('+({sgd:'lr 0.4',mom:'lr 0.1, momentum 0.9',rms:'lr 0.1',adam:'lr 0.3'})[o.k]+')',stroke:o.color,dash:o.css,shape:o.shape,fill:o.color,mstroke:'#060F30',width:2.5}})).replace(/^<ul class="legend">|<\/ul>$/g,'');
+  }
+  function render(){
+    $('#raceStep').value=step;$('#raceOut').textContent=step;
+    draw();table();lossChart();
+  }
+  // toggles
+  var tg=$('#raceToggles');
+  OPT.forEach(function(o){
+    var lab=document.createElement('label');lab.style.cssText='display:inline-flex;align-items:center;gap:6px;font-weight:600;font-size:.9rem;margin-right:10px;cursor:pointer';
+    var cb=document.createElement('input');cb.type='checkbox';cb.checked=true;
+    cb.addEventListener('change',function(){o.on=cb.checked;render()});
+    lab.appendChild(cb);lab.appendChild(document.createTextNode(o.name));tg.appendChild(lab);
+  });
+  function stop(){playing=false;clearInterval(timer);$('#racePlay').textContent='Play'}
+  var reduce=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  $('#racePlay').addEventListener('click',function(){
+    if(playing){stop();return}
+    if(reduce){step=STEPS;render();return}
+    if(step>=STEPS)step=0;
+    playing=true;$('#racePlay').textContent='Pause';
+    timer=setInterval(function(){step++;render();if(step>=STEPS)stop()},140);
+  });
+  $('#raceReset').addEventListener('click',function(){stop();step=0;render()});
+  $('#raceEnd').addEventListener('click',function(){stop();step=STEPS;render()});
+  $('#raceStep').addEventListener('input',function(){stop();step=+this.value;render()});
+  watch(cv.parentNode,render);
+  watch(lossEl,lossChart);
+})();
+
+/* ---------- LR scheduling ---------- */
+(function(){
+  var hi=[0.14,0.121,0.159,0.132,0.203,0.139,0.146,0.088,0.067,0.116],dec=[0.129,0.122,0.118,0.111,0.106,0.102,0.097,0.093,0.091,0.086];
+  var el=$('#lrLast');
+  function draw(){
+    var P=function(a){return a.map(function(v,i){return [31+i,v]})};
+    lineChart(el,{xmin:31,xmax:40,xticks:[31,32,33,34,35,36,37,38,39,40],ymin:0.04,ymax:0.22,h:300,xlab:'Epoch',ylab:'Training loss',fmtY:function(v){return v.toFixed(2)},
+      label:'Loss over epochs 31 to 40. Without decay it bounces between 0.067 and 0.203. With decay it falls steadily from 0.129 to 0.086.',
+      series:[
+        {name:'Adam, lr 0.03, no decay',pts:P(hi),stroke:'var(--gold-600)',fill:'var(--gold-500)',mstroke:'var(--navy-900)',shape:'triangle',dash:'7 5',width:2.8},
+        {name:'Adam, lr 0.03, with decay',pts:P(dec),stroke:'var(--royal-600)',fill:'var(--royal-600)',shape:'circle',width:3.2}
+      ]});
+  }
+  watch(el,draw);
+  var mn=function(a){return Math.min.apply(null,a)},mx=function(a){return Math.max.apply(null,a)};
+  $('#lrRead').innerHTML='<div class="stat gold"><b>'+mn(hi).toFixed(3)+' &ndash; '+mx(hi).toFixed(3)+'</b><span>range of the no-decay losses over those 10 epochs: bouncing</span></div><div class="stat"><b>'+mn(dec).toFixed(3)+' &ndash; '+mx(dec).toFixed(3)+'</b><span>range with decay: falling every epoch</span></div>';
+
+  var c=$('#lrCurve');
+  function drawCurve(){
+    var l0=+$('#lr0').value,r0=+$('#lrR').value;
+    $('#lrA').textContent=l0.toFixed(3);$('#lrB').textContent=r0.toFixed(2);
+    var pts=[];for(var e=0;e<=40;e++)pts.push([e,l0/(1+r0*e)]);
+    lineChart(c,{xmin:0,xmax:40,xticks:[0,5,10,15,20,25,30,35,40],ymin:0,ymax:0.1,h:280,xlab:'Epoch',ylab:'Learning rate',fmtY:function(v){return v.toFixed(2)},fmtT:function(v){return v.toFixed(4)},
+      label:'Learning rate by epoch under the decay schedule',
+      series:[{name:'Learning rate = lr0 / (1 + r0 × epoch)',pts:pts,stroke:'var(--royal-600)',fill:'var(--gold-500)',mstroke:'var(--navy-900)',shape:'circle',width:3.2,markEvery:5}]});
+    var q=function(e){return (l0/(1+r0*e)).toFixed(4)};
+    $('#lrCurveRead').innerHTML='<div class="stat"><b>'+q(0)+'</b><span>learning rate at epoch 0</span></div><div class="stat"><b>'+q(10)+'</b><span>at epoch 10</span></div><div class="stat gold"><b>'+q(40)+'</b><span>at epoch 40</span></div>';
+  }
+  $('#lr0').addEventListener('input',drawCurve);$('#lrR').addEventListener('input',drawCurve);
+  watch(c,drawCurve);
+})();
+
+/* ---------- quizzes ---------- */
+var QUIZ={
+ q1:{n:1,q:'A network initialized entirely at zero shows loss stuck at ln(3) and every row of its first layer\'s weight matrix identical after 200 epochs. What\'s the correct explanation?',
+  o:['Every neuron in that layer receives an identical gradient every step, since they compute identical outputs from the same input, so they update identically, forever.','200 epochs simply wasn\'t enough training time for the weights to diverge from each other.','The learning rate must have been set to exactly zero by mistake in this run.','Cross-entropy loss is mathematically undefined when all weights start at zero, which is why it got stuck.'],a:0,
+  w:'Identical starting weights make every neuron in a layer compute the same thing, receive the same gradient, and take the same update step: a self-reinforcing loop with no way out, not a slow start. More epochs wouldn\'t help, because the loss was essentially flat for all 200 epochs, the signature of a stuck gradient rather than a merely slow one. The learning rate here was 0.05, not zero, and cross-entropy is perfectly well-defined; the model just never produces useful predictions to feed it.'},
+ q2:{n:2,q:'At the exact same learning rate, adding momentum reached lower loss than plain SGD over identical epochs. What is momentum actually doing differently?',
+  o:['It silently increases the effective learning rate behind the scenes.','It accumulates a running average of past gradients, so consistent directions build speed and noisy ones cancel.','It recomputes the loss function using a smoothed version of the training data.','It replaces gradient descent with a second-order (curvature-based) optimization method.'],a:1,
+  w:'Momentum\'s velocity term is a running average of gradients: a consistent downhill direction accumulates speed, conflicting directions average out, all at the same learning rate you entered. It isn\'t a hidden learning-rate change, the loss function and data are untouched, and it is still first-order gradient descent, not curvature-based.'},
+ q3:{n:3,q:'Why does dividing each parameter\'s step by the square root of its running average of squared gradients reduce oscillation in the steep direction of a loss surface?',
+  o:['It doesn\'t reduce oscillation; it only speeds up convergence in the shallow direction.','A direction with consistently large gradients gets a large value in that denominator, which shrinks its step size relative to gentler directions.','Squaring the gradient always produces a value greater than 1, which forces every step to shrink equally in all directions.','It replaces the gradient itself with a moving average, the same mechanism momentum uses.'],a:1,
+  w:'The steep direction accumulates a large squared-gradient average, so dividing by its square root specifically shrinks steps there, while a shallow direction\'s small average barely shrinks its step at all, letting progress continue. It changes step size per direction, not just speed in one direction; squared gradients aren\'t guaranteed to exceed 1; and this divides by a magnitude average, a different mechanism from momentum\'s directional average.'},
+ q4:{n:4,q:'Why does Adam need bias correction on its running averages?',
+  o:['Because both running averages start at zero, so early steps understate the true gradient signal until the averages "warm up."','Because Adam\'s learning rate is always too high without it.','Because bias correction is what allows Adam to use mini-batches instead of full-batch gradient descent.','Because without it, Adam would be mathematically identical to plain SGD.'],a:0,
+  w:'Both running averages initialize at zero, so in the first several steps they are a biased underestimate of the true gradient statistics. Bias correction rescales them back toward their true magnitude. It is unrelated to the learning-rate value itself, mini-batches work fine with or without it, and removing it wouldn\'t reduce Adam to plain SGD; it would just make Adam\'s own early steps too small.'},
+ q5:{n:5,q:'On the elongated valley above, plain SGD\'s path visibly zigzags back and forth in one direction while barely advancing in the other. What causes this specific shape?',
+  o:['A bug in the gradient computation for that direction.','The starting point was chosen adversarially to make SGD look worse than the other optimizers.','The learning rate is large enough to overshoot in the steep direction, while being too small to make fast progress in the shallow one: one fixed step size serving two very different slopes.','SGD always zigzags regardless of the loss surface\'s shape.'],a:2,
+  w:'One learning rate has to serve both the steep direction (where it is too large, causing overshoot and zigzag) and the shallow direction (where the same value is too small, causing a crawl). That is exactly the imbalance RMSprop\'s and Adam\'s per-parameter scaling are built to fix. It isn\'t a computation bug, the zigzag is specific to this kind of elongated surface rather than universal, and the same start was used for every optimizer here.'},
+ q6:{n:6,q:'Adam already scales each parameter\'s effective step size individually. Why does decaying the overall learning rate over time still help?',
+  o:['It doesn\'t help; Adam\'s adaptive scaling makes external decay redundant.','Adam\'s per-parameter scaling adjusts relative step sizes between parameters, but doesn\'t shrink the overall step size as training nears a minimum, so decay handles that separately.','Decay is only useful for plain SGD; using it with Adam is a common but harmless mistake.','Decay works by increasing Adam\'s momentum term over time, which happens to reduce oscillation.'],a:1,
+  w:'Adam\'s adaptation is relative: it balances step sizes between parameters, but says nothing about shrinking the overall step as the loss approaches a minimum. That is exactly what the two runs showed: an identical setup, and decay alone turned a bouncing curve into a smooth one. It clearly wasn\'t redundant here or harmless-but-useless, and decay adjusts the learning rate directly, not the momentum term.'}
+};
+$$('.quiz').forEach(function(box){
+  var d=QUIZ[box.getAttribute('data-quiz')],L='ABCD';
+  function render(chosen){
+    var h='<span class="qh">Knowledge check '+d.n+'</span><p class="qt" id="qt'+d.n+'">'+esc(d.q)+'</p><ul role="group" aria-labelledby="qt'+d.n+'">';
+    d.o.forEach(function(t,i){
+      var cls='',mark='';
+      if(chosen!==null){if(i===d.a){cls='ok';mark=' <strong>(correct)</strong>'}else if(i===chosen){cls='bad';mark=' <strong>(your choice, not correct)</strong>'}}
+      h+='<li><button type="button" data-i="'+i+'" class="'+cls+'"'+(chosen!==null?' disabled':'')+'><span class="ml">'+L[i]+'</span><span>'+esc(t)+mark+'</span></button></li>';
+    });
+    h+='</ul><div aria-live="polite">';
+    if(chosen!==null){
+      h+='<div class="fb '+(chosen===d.a?'good':'')+'"><p><strong>'+(chosen===d.a?'That\'s right.':'Not quite.')+'</strong> The correct answer is '+L[d.a]+'.</p><p>'+esc(d.w)+'</p><button type="button" class="btn ghost sm" data-reset>Try again</button></div>';
+    }
+    h+='</div>';
+    box.innerHTML=h;
+    $$('button[data-i]',box).forEach(function(b){b.addEventListener('click',function(){render(+b.getAttribute('data-i'));var f=$('.fb',box);if(f&&f.scrollIntoView)f.scrollIntoView({block:'nearest'})})});
+    var rs=$('[data-reset]',box);if(rs)rs.addEventListener('click',function(){render(null);$('button[data-i]',box).focus()});
+  }
+  render(null);
+});
+
+/* ---------- rapid fire ---------- */
+(function(){
+  var qa=[
+    ['Why is zero-init worse than "just slow"?','Because the symmetry never breaks. Every neuron in a layer computes the same output, gets the same gradient and takes the same update, so the whole layer behaves like one neuron forever. In the lecture the loss stayed at about ln(3) after 200 epochs. More epochs can\'t help.'],
+    ['What\'s the actual difference between what momentum fixes and what RMSprop fixes?','Momentum smooths the direction of updates: a running average of gradients lets consistent directions build speed while noisy ones cancel. RMSprop rescales the step size per parameter, dividing by the root of a running average of squared gradients, shrinking steps where gradients are large and growing them where they are small. One acts on direction, the other on magnitude.'],
+    ['What does bias correction fix, specifically?','Both of Adam\'s running averages start at zero, so in the first few steps they understate the true gradient statistics. Dividing by a correction factor that is large at step 1 and fades to 1 restores their true size, so Adam\'s early steps aren\'t too small (and the early denominator isn\'t artificially tiny).'],
+    ['Why does a well-tuned Adam run still sometimes need a schedule?','Adam\'s scaling adjusts relative step sizes between parameters, but it doesn\'t shrink the overall step as training nears a minimum. A fixed step size is eventually too big for at least some direction there, so the loss bounces instead of settling. Decay shrinks the overall step separately.']
+  ],box=$('#rf'),h='';
+  qa.forEach(function(p,i){h+='<div><button type="button" class="q" aria-expanded="false" aria-controls="rfa'+i+'">'+esc(p[0])+'</button><div class="a" id="rfa'+i+'" hidden><p>'+esc(p[1])+'</p></div></div>'});
+  box.innerHTML=h;
+  $$('button.q',box).forEach(function(b){b.addEventListener('click',function(){var a=$('#'+b.getAttribute('aria-controls')),o=a.hidden;a.hidden=!o;b.setAttribute('aria-expanded',String(o))})});
+})();
+})();
+</script>
+</body>
+</html>
